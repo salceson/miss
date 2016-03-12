@@ -1,5 +1,11 @@
 package miss
 
+import com.typesafe.config.ConfigFactory
+import miss.trafficsimulation.roads.Area
+
 object Main extends App {
-  println(args)
+  val config = ConfigFactory.load()
+  val trafficSimulationConfig = config.getConfig("trafficsimulation")
+  val area = new Area(trafficSimulationConfig)
+  println(area)
 }
