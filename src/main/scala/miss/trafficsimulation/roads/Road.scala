@@ -2,23 +2,25 @@ package miss.trafficsimulation.roads
 
 import miss.trafficsimulation.traffic.Vehicle
 
-class Road {
+class Road(val id: RoadId, val elems: List[RoadElem])
 
+case class RoadId(id: Int)
+
+trait RoadElem
+
+class Intersection(val horizontalRoadIn: RoadSegment,
+                   val horizontalRoadOut: RoadSegment,
+                   val verticalRoadIn: RoadSegment,
+                   val verticalRoadOut: RoadSegment) extends RoadElem
+
+class RoadSegment(val lanesCount: Int, val laneLength: Int) extends RoadElem {
+  val lanes: List[Lane] = List.fill(lanesCount)(new Lane(laneLength))
+  var out: RoadElem = null
+  var in: RoadElem = null
 }
 
-class Intersection(var horizontalRoadIn: RoadSegment,
-                   var horizontalRoadOut: RoadSegment,
-                   var verticalRoadIn: RoadSegment,
-                   var verticalRoadOut: RoadSegment) {
-
-}
-
-class RoadSegment(lanesCount: Int, laneLength: Int) {
-  var lanes: List[Lane] = List.fill(lanesCount)(new Lane(laneLength))
-}
-
-class Lane(length: Int) {
-  var cells: List[RoadCell] = List.fill(length)(new RoadCell)
+class Lane(val length: Int) {
+  val cells: List[RoadCell] = List.fill(length)(new RoadCell)
 }
 
 class RoadCell {
