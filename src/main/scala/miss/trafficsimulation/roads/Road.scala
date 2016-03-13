@@ -9,15 +9,15 @@ case class RoadId(id: Int)
 
 trait RoadElem
 
-class Intersection(val horizontalRoadIn: RoadSegment,
-                   val horizontalRoadOut: RoadSegment,
-                   val verticalRoadIn: RoadSegment,
-                   val verticalRoadOut: RoadSegment) extends RoadElem
+class Intersection extends RoadElem {
+  var horizontalRoadIn: RoadSegment = null
+  var horizontalRoadOut: RoadSegment = null
+  var verticalRoadIn: RoadSegment = null
+  var verticalRoadOut: RoadSegment = null
+}
 
-class RoadSegment(val lanesCount: Int, val laneLength: Int) extends RoadElem {
+class RoadSegment(val lanesCount: Int, val laneLength: Int, val in: Option[RoadElem], val out: RoadElem) extends RoadElem {
   val lanes: List[Lane] = List.fill(lanesCount)(new Lane(laneLength))
-  var out: RoadElem = null
-  var in: RoadElem = null
 }
 
 class Lane(val length: Int) {
