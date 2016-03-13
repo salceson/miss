@@ -1,10 +1,10 @@
 package miss.trafficsimulation.roads
 
-import com.typesafe.config.Config
+import miss.trafficsimulation.roads.RoadDirection.RoadDirection
 
-class Area(config: Config) {
-  private val areaConfig = config.getConfig("area")
-  private val roadsNum = areaConfig.getInt("roads")
-  private val roadIds = (1 to roadsNum).toList
-  val roads: List[Road] = roadIds map {n => new Road(RoadId(n), List())}
+case class AreaRoadDefinition(roadId: RoadId, direction: RoadDirection, previousRoadElem: RoadElem, nextRoadElem: RoadElem)
+
+class Area(verticalRoads: List[AreaRoadDefinition],
+           horizontalRoads: List[AreaRoadDefinition]) {
+
 }
