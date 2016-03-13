@@ -2,14 +2,12 @@ package miss.trafficsimulation.traffic
 
 import miss.trafficsimulation.util.Color
 
-case class Move()
-
 case class Situation()
 
 case class VehicleId(id: String)
 
 trait Vehicle {
-  def move(situation: Situation): Move
+  def move(possibleMoves: List[Move]): Move
 }
 
 case class Car(id: VehicleId,
@@ -19,5 +17,5 @@ case class Car(id: VehicleId,
                var currentVelocity: Int = 0,
                var currentAcceleration: Int = 0)
   extends Vehicle {
-  override def move(situation: Situation): Move = ???
+  override def move(possibleMoves: List[Move]): Move = ???
 }
