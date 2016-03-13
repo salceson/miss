@@ -32,3 +32,7 @@ object RoadDirection extends Enumeration {
   type RoadDirection = Value
   val NS, SN, WE, EW = Value
 }
+
+trait RoadIn
+
+trait RoadOut
