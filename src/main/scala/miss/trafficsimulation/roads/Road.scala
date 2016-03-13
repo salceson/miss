@@ -1,8 +1,9 @@
 package miss.trafficsimulation.roads
 
+import miss.trafficsimulation.roads.RoadDirection.RoadDirection
 import miss.trafficsimulation.traffic.Vehicle
 
-class Road(val id: RoadId, val elems: List[RoadElem])
+class Road(val id: RoadId, val direction: RoadDirection, val elems: List[RoadElem])
 
 case class RoadId(id: Int)
 
@@ -25,4 +26,9 @@ class Lane(val length: Int) {
 
 class RoadCell {
   var vehicle: Option[Vehicle] = None
+}
+
+object RoadDirection extends Enumeration {
+  type RoadDirection = Value
+  val NS, SN, WE, EW = Value
 }
