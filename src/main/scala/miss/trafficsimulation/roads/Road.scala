@@ -1,7 +1,8 @@
 package miss.trafficsimulation.roads
 
 import miss.trafficsimulation.roads.RoadDirection.RoadDirection
-import miss.trafficsimulation.traffic.Vehicle
+import miss.trafficsimulation.traffic.MoveDirection._
+import miss.trafficsimulation.traffic.{Move, Vehicle}
 
 class Road(val id: RoadId, val direction: RoadDirection, val elems: List[RoadElem])
 
@@ -16,8 +17,28 @@ class Intersection extends RoadElem {
   var verticalRoadOut: RoadSegment = null
 }
 
-class RoadSegment(val lanesCount: Int, val laneLength: Int, val in: Option[RoadElem], val out: RoadElem) extends RoadElem {
+case class VehicleAndCoordinates(vehicle: Vehicle, laneIdx: Long, cellIdx: Long)
+
+class RoadSegment(val roadId: RoadId, val lanesCount: Int, val laneLength: Int,
+                  val in: Option[RoadElem], val out: RoadElem) extends RoadElem {
   val lanes: List[Lane] = List.fill(lanesCount)(new Lane(laneLength))
+
+  private[roads] def vehicleIterator(): Iterator[VehicleAndCoordinates] = {
+    val cellIndicesIterator = (0 until laneLength).reverseIterator
+    cellIndicesIterator flatMap { cellIdx: Int =>
+      val laneIndicesIterator = (0 until lanesCount).reverseIterator
+      laneIndicesIterator flatMap { laneIdx: Int =>
+        lanes(laneIdx).cells(cellIdx).vehicle match {
+          case Some(vehicle) => Iterator(VehicleAndCoordinates(vehicle, laneIdx, cellIdx))
+          case None => Iterator.empty
+        }
+      }
+    }
+  }
+
+  private[roads] def calculatePossibleMoves(vehicleAndCoordinates: VehicleAndCoordinates): List[Move] = {
+    List(Move(GoStraight, 0, 0))
+  }
 }
 
 class Lane(val length: Int) {

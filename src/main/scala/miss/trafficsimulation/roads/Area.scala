@@ -6,7 +6,8 @@ import miss.trafficsimulation.roads.RoadDirection.RoadDirection
 import scala.Array.ofDim
 import scala.collection.mutable.ListBuffer
 
-case class AreaRoadDefinition(roadId: RoadId, direction: RoadDirection, previousRoadElem: RoadIn, nextRoadElem: RoadElem)
+case class AreaRoadDefinition(roadId: RoadId, direction: RoadDirection,
+                              previousRoadElem: RoadIn, nextRoadElem: RoadElem)
 
 class Area(verticalRoadsDefs: List[AreaRoadDefinition],
            horizontalRoadsDefs: List[AreaRoadDefinition],
@@ -20,8 +21,8 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
 
   private val intersections = ofDim[Intersection](verticalRoadsDefs.size, horizontalRoadsDefs.size)
 
-  private val verticalRoads = List[Road]()
-  private val horizontalRoads = List[Road]()
+  private[roads] val verticalRoads = ListBuffer[Road]()
+  private[roads] val horizontalRoads = ListBuffer[Road]()
 
   for (x <- verticalRoadsDefs.indices) {
     for (y <- horizontalRoadsDefs.indices) {
@@ -29,20 +30,20 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
     }
   }
 
+  private val transposedIntersections = intersections.transpose
+
   for (y <- horizontalRoadsDefs.indices) {
-    //TODO
-    //horizontalRoads += createRoad(horizontalRoadsDefs(y), <<list of intersections in row y>>)
+    horizontalRoads += createRoad(horizontalRoadsDefs(y), intersections(y).toList)
   }
 
   for (x <- verticalRoadsDefs.indices) {
-    //TODO
-    //verticalRoads += createRoad(verticalRoadsDefs(x), <<list of intersections in column x>>)
+    verticalRoads += createRoad(verticalRoadsDefs(x), transposedIntersections(x).toList)
   }
 
   /**
     * Creates road for given definition and list of intersections.
     *
-    * @param roadDef Road definition
+    * @param roadDef       Road definition
     * @param intersections List of intersection ordered from left to right
     * @return
     */
@@ -58,8 +59,9 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
 
     //first segment
     val firstIntersection = orderedIntersections.head
-    val firstSegment = new RoadSegment(lanesNum, roadSegmentsLength, None, firstIntersection)
-    if(horizontal) {
+    val firstSegment = new RoadSegment(roadDef.roadId, lanesNum,
+      roadSegmentsLength, None, firstIntersection)
+    if (horizontal) {
       firstIntersection.horizontalRoadIn = firstSegment
     } else {
       firstIntersection.verticalRoadIn = firstSegment
@@ -70,8 +72,9 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
     for (x <- 1 until orderedIntersections.size) {
       val prevIntersection = orderedIntersections(x - 1)
       val nextIntersection = orderedIntersections(x)
-      val segment = new RoadSegment(lanesNum, roadSegmentsLength, Some(prevIntersection), nextIntersection)
-      if(horizontal) {
+      val segment = new RoadSegment(roadDef.roadId, lanesNum,
+        roadSegmentsLength, Some(prevIntersection), nextIntersection)
+      if (horizontal) {
         prevIntersection.horizontalRoadOut = segment
         nextIntersection.horizontalRoadIn = segment
       } else {
@@ -85,8 +88,9 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
 
     //last segment
     val lastIntersection = orderedIntersections.last
-    val lastSegment = new RoadSegment(lanesNum, roadSegmentsLength, Some(lastIntersection), roadDef.nextRoadElem)
-    if(horizontal) {
+    val lastSegment = new RoadSegment(roadDef.roadId, lanesNum,
+      roadSegmentsLength, Some(lastIntersection), roadDef.nextRoadElem)
+    if (horizontal) {
       lastIntersection.horizontalRoadOut = lastSegment
     } else {
       lastIntersection.verticalRoadOut = lastSegment

@@ -8,6 +8,7 @@ case class VehicleId(id: String)
 
 trait Vehicle {
   def move(possibleMoves: List[Move]): Move
+  def color: Color
 }
 
 case class Car(id: VehicleId,
