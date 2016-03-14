@@ -7,7 +7,10 @@ case class Situation()
 case class VehicleId(id: String)
 
 trait Vehicle {
+  def id: VehicleId
+
   def move(possibleMoves: List[Move]): Move
+
   def color: Color
 }
 
