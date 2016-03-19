@@ -35,4 +35,8 @@ object AreaActor {
 
   case class ReadyForComputation(timeFrameNumber: Long)
 
+  case class VisualizationStartRequest()
+
+  case class VisualizationStopRequest()
+
 }

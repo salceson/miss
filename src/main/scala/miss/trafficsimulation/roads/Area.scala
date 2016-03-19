@@ -21,24 +21,17 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
 
   private val intersections = ofDim[Intersection](verticalRoadsDefs.size, horizontalRoadsDefs.size)
 
-  private[roads] val verticalRoads = ListBuffer[Road]()
-  private[roads] val horizontalRoads = ListBuffer[Road]()
-
-  for (x <- verticalRoadsDefs.indices) {
-    for (y <- horizontalRoadsDefs.indices) {
-      intersections(x)(y) = new Intersection()
-    }
+  for (x <- verticalRoadsDefs.indices; y <- horizontalRoadsDefs.indices) {
+    intersections(x)(y) = new Intersection()
   }
-
   private val transposedIntersections = intersections.transpose
 
-  for (y <- horizontalRoadsDefs.indices) {
-    horizontalRoads += createRoad(horizontalRoadsDefs(y), intersections(y).toList)
-  }
-
-  for (x <- verticalRoadsDefs.indices) {
-    verticalRoads += createRoad(verticalRoadsDefs(x), transposedIntersections(x).toList)
-  }
+  private[roads] val horizontalRoads = horizontalRoadsDefs.indices.map(
+    (y: Int) => createRoad(horizontalRoadsDefs(y), intersections(y).toList)
+  )
+  private[roads] val verticalRoads = verticalRoadsDefs.indices.map(
+    (x: Int) => createRoad(verticalRoadsDefs(x), transposedIntersections(x).toList)
+  )
 
   /**
     * Creates road for given definition and list of intersections.
