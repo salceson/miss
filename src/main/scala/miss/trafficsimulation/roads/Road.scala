@@ -81,7 +81,7 @@ class RoadSegment(val roadId: RoadId,
   private[roads] def calculatePossibleMoves(vac: VehicleAndCoordinates): List[Move] = {
     val moves = ListBuffer[Move]()
     val distanceBeforeSegmentEnd = laneLength - vac.cellIdx - 1
-    val isInFirstPartOfTheSegment = distanceBeforeSegmentEnd >= MAX_DISTANCE
+    val isInFirstPartOfTheSegment = distanceBeforeSegmentEnd > MAX_DISTANCE
     if (isInFirstPartOfTheSegment) {
       moves ++= calculateMovesInFirstPart(vac, distanceBeforeSegmentEnd)
     } else {
@@ -100,7 +100,7 @@ class RoadSegment(val roadId: RoadId,
 
     //Go straight
     val maxPossibleCellsStraight = getMaxPossibleCellsInLane(
-      vac.cellIdx + 1, vac.cellIdx + MAX_DISTANCE, vac.laneIdx)
+      vac.cellIdx + 1, vac.cellIdx + MAX_DISTANCE + 1, vac.laneIdx)
     if (maxPossibleCellsStraight > 0) {
       possibleMoves += Move(GoStraight, vac.laneIdx, maxPossibleCellsStraight)
     }
@@ -108,7 +108,7 @@ class RoadSegment(val roadId: RoadId,
     //Switch lane left
     if (vac.laneIdx > 0) {
       val maxPossibleCellsSwitchLaneLeft = getMaxPossibleCellsInLane(
-        vac.cellIdx + 1, vac.cellIdx + MAX_DISTANCE, vac.laneIdx - 1)
+        vac.cellIdx + 1, vac.cellIdx + MAX_DISTANCE + 1, vac.laneIdx - 1)
       if (maxPossibleCellsSwitchLaneLeft > 0) {
         possibleMoves += Move(SwitchLaneLeft, vac.laneIdx - 1, maxPossibleCellsSwitchLaneLeft)
       }
@@ -116,16 +116,17 @@ class RoadSegment(val roadId: RoadId,
 
     //Switch lane right
     if (vac.laneIdx < lanesCount - 1) {
-      val maxPossibleCellsSwitchLaneLeft = getMaxPossibleCellsInLane(
-        vac.cellIdx + 1, vac.cellIdx + MAX_DISTANCE, vac.laneIdx + 1)
-      if (maxPossibleCellsSwitchLaneLeft > 0) {
-        possibleMoves += Move(SwitchLaneRight, vac.laneIdx + 1, maxPossibleCellsSwitchLaneLeft)
+      val maxPossibleCellsSwitchLaneRight = getMaxPossibleCellsInLane(
+        vac.cellIdx + 1, vac.cellIdx + MAX_DISTANCE + 1, vac.laneIdx + 1)
+      if (maxPossibleCellsSwitchLaneRight > 0) {
+        possibleMoves += Move(SwitchLaneRight, vac.laneIdx + 1, maxPossibleCellsSwitchLaneRight)
       }
     }
 
     possibleMoves.toList
   }
 
+  //FIXME: Check lights direction
   private def calculateMovesInSecondPart(vac: VehicleAndCoordinates,
                                          distanceBeforeSegmentEnd: Int): List[Move] = {
     val possibleMoves = ListBuffer[Move]()
