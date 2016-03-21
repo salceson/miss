@@ -4,6 +4,7 @@ import com.typesafe.config.Config
 import miss.trafficsimulation.roads.RoadDirection.RoadDirection
 
 import scala.Array.ofDim
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 case class AreaRoadDefinition(roadId: RoadId, direction: RoadDirection,
@@ -14,7 +15,6 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
            config: Config) {
 
   private val areaConfig = config.getConfig("area")
-  private val roadsNum = areaConfig.getInt("roads")
 
   private val roadSegmentsLength = areaConfig.getInt("cells_between_intersections")
   private val lanesNum = areaConfig.getInt("lanes")
@@ -38,7 +38,7 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
     *
     * @param roadDef       Road definition
     * @param intersections List of intersection ordered from left to right
-    * @return
+    * @return road created from definition and intersections
     */
   private def createRoad(roadDef: AreaRoadDefinition, intersections: List[Intersection]): Road = {
     val roadElems = ListBuffer[RoadElem]()
@@ -91,7 +91,36 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
     roadElems += lastIntersection
     roadElems += lastSegment
 
-    new Road(roadDef.roadId, roadDef.direction, roadElems.toList)
+    val road = new Road(roadDef.roadId, roadDef.direction, roadElems.toList)
+    roadElems foreach {
+      case rs: RoadSegment => rs.road = road
+    }
+    road
+  }
+
+  def simulate(): List[VehicleAndCoordinates] = {
+    val vehiclesAndCoordinatesOutOfArea = ListBuffer[VehicleAndCoordinates]()
+
+    val segmentsQueue = mutable.Queue[RoadElem]()
+    segmentsQueue.enqueue(horizontalRoads.map((road: Road) => road.elems.reverse.head): _*)
+    segmentsQueue.enqueue(verticalRoads.map((road: Road) => road.elems.reverse.head): _*)
+
+    val segmentsDone = mutable.Map[RoadElem, Boolean](
+      (horizontalRoads.flatMap((road: Road) => road.elems).map((roadElem: RoadElem) => roadElem -> false)
+        ++ verticalRoads.flatMap((road: Road) => road.elems).map((roadElem: RoadElem) => roadElem -> false)): _*
+    )
+
+    while (segmentsQueue.nonEmpty) {
+      val segment = segmentsQueue.dequeue()
+      segment match {
+        case rs: RoadSegment =>
+          vehiclesAndCoordinatesOutOfArea ++= rs.simulate()
+          val nextRoadSegment = rs.in
+        case i: Intersection =>
+        case _ =>
+      }
+    }
+    vehiclesAndCoordinatesOutOfArea.toList
   }
 
 }
