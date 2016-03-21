@@ -1,7 +1,9 @@
 package miss.trafficsimulation.roads
 
+import akka.actor.ActorRef
 import com.typesafe.config.Config
-import miss.trafficsimulation.roads.RoadDirection.RoadDirection
+import miss.trafficsimulation.roads.LightsDirection.{LightsDirection, Horizontal, Vertical}
+import miss.trafficsimulation.roads.RoadDirection.{RoadDirection, NS, SN}
 
 import scala.Array.ofDim
 import scala.collection.mutable
@@ -33,6 +35,8 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
     (x: Int) => createRoad(verticalRoadsDefs(x), transposedIntersections(x).toList)
   )
 
+  private var intersectionGreenLightsDirection: LightsDirection = Horizontal
+
   /**
     * Creates road for given definition and list of intersections.
     *
@@ -53,7 +57,7 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
     //first segment
     val firstIntersection = orderedIntersections.head
     val firstSegment = new RoadSegment(roadDef.roadId, lanesNum,
-      roadSegmentsLength, None, firstIntersection)
+      roadSegmentsLength, None, firstIntersection, roadDef.direction)
     if (horizontal) {
       firstIntersection.horizontalRoadIn = firstSegment
     } else {
@@ -66,7 +70,7 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
       val prevIntersection = orderedIntersections(x - 1)
       val nextIntersection = orderedIntersections(x)
       val segment = new RoadSegment(roadDef.roadId, lanesNum,
-        roadSegmentsLength, Some(prevIntersection), nextIntersection)
+        roadSegmentsLength, Some(prevIntersection), nextIntersection, roadDef.direction)
       if (horizontal) {
         prevIntersection.horizontalRoadOut = segment
         nextIntersection.horizontalRoadIn = segment
@@ -82,7 +86,7 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
     //last segment
     val lastIntersection = orderedIntersections.last
     val lastSegment = new RoadSegment(roadDef.roadId, lanesNum,
-      roadSegmentsLength, Some(lastIntersection), roadDef.nextRoadElem)
+      roadSegmentsLength, Some(lastIntersection), roadDef.nextRoadElem, roadDef.direction)
     if (horizontal) {
       lastIntersection.horizontalRoadOut = lastSegment
     } else {
@@ -91,36 +95,61 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
     roadElems += lastIntersection
     roadElems += lastSegment
 
-    val road = new Road(roadDef.roadId, roadDef.direction, roadElems.toList)
-    roadElems foreach {
-      case rs: RoadSegment => rs.road = road
-    }
-    road
+    new Road(roadDef.roadId, roadDef.direction, roadElems.toList)
   }
 
-  def simulate(): List[VehicleAndCoordinates] = {
-    val vehiclesAndCoordinatesOutOfArea = ListBuffer[VehicleAndCoordinates]()
+  def simulate(): List[(ActorRef, RoadId, VehicleAndCoordinates)] = {
+    val vehiclesAndCoordinatesOutOfArea = ListBuffer[(ActorRef, RoadId, VehicleAndCoordinates)]()
 
     val segmentsQueue = mutable.Queue[RoadElem]()
-    segmentsQueue.enqueue(horizontalRoads.map((road: Road) => road.elems.reverse.head): _*)
-    segmentsQueue.enqueue(verticalRoads.map((road: Road) => road.elems.reverse.head): _*)
+
+    val allSegments = (
+      horizontalRoads.flatMap((road: Road) => road.elems)
+        ++ verticalRoads.flatMap((road: Road) => road.elems)
+      ).filter((r: RoadElem) =>
+      r match {
+        case _: RoadSegment => true
+        case _ => false
+      })
+
+    segmentsQueue.enqueue(allSegments: _*)
 
     val segmentsDone = mutable.Map[RoadElem, Boolean](
-      (horizontalRoads.flatMap((road: Road) => road.elems).map((roadElem: RoadElem) => roadElem -> false)
-        ++ verticalRoads.flatMap((road: Road) => road.elems).map((roadElem: RoadElem) => roadElem -> false)): _*
+      allSegments.map((roadElem: RoadElem) => roadElem -> false): _*
     )
 
     while (segmentsQueue.nonEmpty) {
-      val segment = segmentsQueue.dequeue()
-      segment match {
-        case rs: RoadSegment =>
-          vehiclesAndCoordinatesOutOfArea ++= rs.simulate()
-          val nextRoadSegment = rs.in
-        case i: Intersection =>
-        case _ =>
+      val segment = segmentsQueue.dequeue().asInstanceOf[RoadSegment]
+      if (canCalculate(segment, segmentsDone)) {
+        vehiclesAndCoordinatesOutOfArea ++= segment.simulate()
+        segmentsDone(segment) = true
+      } else {
+        segmentsQueue.enqueue(segment)
       }
     }
+
+    intersectionGreenLightsDirection =
+      if (intersectionGreenLightsDirection == Horizontal) Vertical else Horizontal
     vehiclesAndCoordinatesOutOfArea.toList
+  }
+
+  private def canCalculate(segment: RoadSegment, segmentsDone: mutable.Map[RoadElem, Boolean]): Boolean = {
+    if (segment.out.isInstanceOf[NextAreaRoadSegment]) {
+      true
+    } else if (segment.roadDirection != intersectionGreenLightsDirection) {
+      true
+    } else {
+      val intersection = segment.out.asInstanceOf[Intersection]
+      segmentsDone(intersection.horizontalRoadOut) && segmentsDone(intersection.verticalRoadOut)
+    }
+  }
+
+  private def roadDirectionToLightsDirection(roadDirection: RoadDirection): LightsDirection = {
+    if (roadDirection == NS || roadDirection == SN) {
+      Horizontal
+    } else {
+      Vertical
+    }
   }
 
 }

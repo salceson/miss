@@ -13,5 +13,5 @@ case class Move(direction: MoveDirection, laneIdx: Int, cellsCount: Int)
 
 object MoveDirection extends Enumeration {
   type MoveDirection = Value
-  val GoStraight, TurnLeft, TurnRight, SwitchLaneLeft, SwitchLaneRight = Value
+  val GoStraight, Turn, SwitchLaneLeft, SwitchLaneRight = Value
 }

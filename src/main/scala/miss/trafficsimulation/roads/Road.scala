@@ -1,7 +1,8 @@
 package miss.trafficsimulation.roads
 
-import miss.trafficsimulation.roads.RoadDirection.RoadDirection
-import miss.trafficsimulation.traffic.MoveDirection._
+import akka.actor.ActorRef
+import miss.trafficsimulation.roads.RoadDirection.{RoadDirection, NS, SN, EW, WE}
+import miss.trafficsimulation.traffic.MoveDirection.{GoStraight, SwitchLaneLeft, SwitchLaneRight, Turn}
 import miss.trafficsimulation.traffic.{Move, Vehicle}
 
 import scala.collection.mutable.ListBuffer
@@ -12,13 +13,15 @@ case class RoadId(id: Int)
 
 sealed trait RoadElem
 
+case class NextAreaRoadSegment(roadId: RoadId, actor: ActorRef) extends RoadElem
+
 class Intersection extends RoadElem {
   var horizontalRoadIn: RoadSegment = null
   var horizontalRoadOut: RoadSegment = null
   var verticalRoadIn: RoadSegment = null
   var verticalRoadOut: RoadSegment = null
 
-  def oppositeRoadSegment(roadSegment: RoadSegment) = {
+  def oppositeRoadSegment(roadSegment: RoadSegment): RoadSegment = {
     if (horizontalRoadIn == roadSegment) {
       horizontalRoadOut
     } else if (horizontalRoadOut == roadSegment) {
@@ -27,6 +30,24 @@ class Intersection extends RoadElem {
       verticalRoadOut
     } else {
       verticalRoadIn
+    }
+  }
+
+  /**
+    * Get road segment after turn.
+    *
+    * Valid only for one-way roads.
+    *
+    * @param roadSegment road segment to turn from
+    * @return road segment to turn into
+    */
+  def turnRoadSegment(roadSegment: RoadSegment): RoadSegment = {
+    if (horizontalRoadIn == roadSegment) {
+      verticalRoadOut
+    } else if (verticalRoadIn == roadSegment) {
+      horizontalRoadOut
+    } else {
+      throw new IllegalArgumentException("Cannot turn from output road!")
     }
   }
 }
@@ -38,7 +59,9 @@ class RoadSegment(val roadId: RoadId,
                   val laneLength: Int,
                   val in: Option[RoadElem],
                   val out: RoadElem,
-                  var road: Road = null) extends RoadElem {
+                  val roadDirection: RoadDirection) extends RoadElem {
+
+  private val MAX_DISTANCE = laneLength / 2
 
   val lanes: List[Lane] = List.fill(lanesCount)(new Lane(laneLength))
 
@@ -55,12 +78,140 @@ class RoadSegment(val roadId: RoadId,
     }
   }
 
-  private[roads] def calculatePossibleMoves(vehicleAndCoordinates: VehicleAndCoordinates): List[Move] = {
-    List(Move(GoStraight, 0, 0))
+  private[roads] def calculatePossibleMoves(vac: VehicleAndCoordinates): List[Move] = {
+    val moves = ListBuffer[Move]()
+    val distanceBeforeSegmentEnd = laneLength - vac.cellIdx - 1
+    val isInFirstPartOfTheSegment = distanceBeforeSegmentEnd >= MAX_DISTANCE
+    if (isInFirstPartOfTheSegment) {
+      moves ++= calculateMovesInFirstPart(vac, distanceBeforeSegmentEnd)
+    } else {
+      moves ++= calculateMovesInSecondPart(vac, distanceBeforeSegmentEnd)
+    }
+    if (moves.isEmpty) {
+      List(Move(GoStraight, vac.laneIdx, 0))
+    } else {
+      moves.toList
+    }
   }
 
-  def simulate(): List[VehicleAndCoordinates] = {
-    val vehiclesAndCoordinatesOutOfArea = ListBuffer[VehicleAndCoordinates]()
+  private def calculateMovesInFirstPart(vac: VehicleAndCoordinates,
+                                        distanceBeforeSegmentEnd: Int): List[Move] = {
+    val possibleMoves = ListBuffer[Move]()
+
+    //Go straight
+    val maxPossibleCellsStraight = getMaxPossibleCellsInLane(
+      vac.cellIdx + 1, vac.cellIdx + MAX_DISTANCE, vac.laneIdx)
+    if (maxPossibleCellsStraight > 0) {
+      possibleMoves += Move(GoStraight, vac.laneIdx, maxPossibleCellsStraight)
+    }
+
+    //Switch lane left
+    if (vac.laneIdx > 0) {
+      val maxPossibleCellsSwitchLaneLeft = getMaxPossibleCellsInLane(
+        vac.cellIdx + 1, vac.cellIdx + MAX_DISTANCE, vac.laneIdx - 1)
+      if (maxPossibleCellsSwitchLaneLeft > 0) {
+        possibleMoves += Move(SwitchLaneLeft, vac.laneIdx - 1, maxPossibleCellsSwitchLaneLeft)
+      }
+    }
+
+    //Switch lane right
+    if (vac.laneIdx < lanesCount - 1) {
+      val maxPossibleCellsSwitchLaneLeft = getMaxPossibleCellsInLane(
+        vac.cellIdx + 1, vac.cellIdx + MAX_DISTANCE, vac.laneIdx + 1)
+      if (maxPossibleCellsSwitchLaneLeft > 0) {
+        possibleMoves += Move(SwitchLaneRight, vac.laneIdx + 1, maxPossibleCellsSwitchLaneLeft)
+      }
+    }
+
+    possibleMoves.toList
+  }
+
+  private def calculateMovesInSecondPart(vac: VehicleAndCoordinates,
+                                         distanceBeforeSegmentEnd: Int): List[Move] = {
+    val possibleMoves = ListBuffer[Move]()
+    val possibleStraightInThisSegment = getMaxPossibleCellsInLane(
+      vac.cellIdx + 1, laneLength, vac.laneIdx)
+    if (0 < possibleStraightInThisSegment && possibleStraightInThisSegment < distanceBeforeSegmentEnd) {
+      possibleMoves += Move(GoStraight, vac.laneIdx, possibleStraightInThisSegment)
+    } else {
+      out match {
+        case _: NextAreaRoadSegment =>
+          possibleMoves += Move(GoStraight, vac.laneIdx, possibleStraightInThisSegment + 1)
+        case i: Intersection =>
+          val nextSegment = i.oppositeRoadSegment(this)
+          val turnSegment = i.turnRoadSegment(this)
+          //Go straight
+          val possibleStraightInNextSegment = nextSegment.getMaxPossibleCellsInLane(
+            0, MAX_DISTANCE - possibleStraightInThisSegment, vac.laneIdx
+          )
+          if (possibleStraightInThisSegment + possibleStraightInNextSegment > 0) {
+            possibleMoves += Move(GoStraight, vac.laneIdx,
+              possibleStraightInThisSegment + possibleStraightInNextSegment)
+          }
+          //Turn left
+          if (vac.laneIdx == 0) {
+            val turnPossible = roadDirection match {
+              case NS if turnSegment.roadDirection == WE => true
+              case SN if turnSegment.roadDirection == EW => true
+              case EW if turnSegment.roadDirection == NS => true
+              case WE if turnSegment.roadDirection == SN => true
+              case _ => false
+            }
+            if (turnPossible) {
+              for (newLaneIdx <- 0 until lanesCount) {
+                val possibleInTurnSegment = turnSegment.getMaxPossibleCellsInLane(
+                  0, MAX_DISTANCE - possibleStraightInThisSegment, newLaneIdx
+                )
+                if (possibleInTurnSegment > 0) {
+                  possibleMoves += Move(Turn, newLaneIdx,
+                    possibleStraightInThisSegment + possibleInTurnSegment)
+                }
+              }
+            }
+          }
+          //Turn right
+          if (vac.laneIdx == lanesCount - 1) {
+            val turnPossible = roadDirection match {
+              case NS if turnSegment.roadDirection == EW => true
+              case SN if turnSegment.roadDirection == WE => true
+              case EW if turnSegment.roadDirection == SN => true
+              case WE if turnSegment.roadDirection == NS => true
+              case _ => false
+            }
+            if (turnPossible) {
+              for (newLaneIdx <- 0 until lanesCount) {
+                val possibleInTurnSegment = turnSegment.getMaxPossibleCellsInLane(
+                  0, MAX_DISTANCE - possibleStraightInThisSegment, newLaneIdx
+                )
+                if (possibleInTurnSegment > 0) {
+                  possibleMoves += Move(Turn, newLaneIdx,
+                    possibleStraightInThisSegment + possibleInTurnSegment)
+                }
+              }
+            }
+          }
+      }
+    }
+    possibleMoves.toList
+  }
+
+  private[roads] def getMaxPossibleCellsInLane(fromCellIdx: Int,
+                                               toCellIdx: Int,
+                                               laneIdx: Int): Int = {
+    var isPossible = true
+    var maxPossible = 0
+    for (cellIdx <- fromCellIdx until toCellIdx) {
+      if (lanes(laneIdx).cells(cellIdx).vehicle.isEmpty && isPossible) {
+        maxPossible += 1
+      } else {
+        isPossible = false
+      }
+    }
+    Math.min(maxPossible, MAX_DISTANCE)
+  }
+
+  def simulate(): List[(ActorRef, RoadId, VehicleAndCoordinates)] = {
+    val vehiclesAndCoordinatesOutOfArea = ListBuffer[(ActorRef, RoadId, VehicleAndCoordinates)]()
 
     for (vac <- vehicleIterator()) {
       val move = vac.vehicle.move(calculatePossibleMoves(vac))
@@ -71,7 +222,7 @@ class RoadSegment(val roadId: RoadId,
       val gotToNewSegment = (oldCellIdx + cells) > laneLength
       val newCellIdx = (oldCellIdx + cells) % laneLength
       move.direction match {
-        case TurnLeft | TurnRight =>
+        case Turn =>
           newLaneIdx = move.laneIdx
         case SwitchLaneLeft =>
           newLaneIdx -= 1
@@ -83,10 +234,14 @@ class RoadSegment(val roadId: RoadId,
       if (gotToNewSegment) {
         out match {
           case i: Intersection =>
-            val oppositeRoadSegment = i.oppositeRoadSegment(this)
-            oppositeRoadSegment.lanes(newLaneIdx).cells(newCellIdx).vehicle = Some(vac.vehicle)
-          case null =>
-            vehiclesAndCoordinatesOutOfArea += vac.copy(laneIdx = newLaneIdx, cellIdx = newCellIdx)
+            val nextRoadSegment = move.direction match {
+              case GoStraight | SwitchLaneLeft | SwitchLaneRight => i.oppositeRoadSegment(this)
+              case Turn => i.turnRoadSegment(this)
+            }
+            nextRoadSegment.lanes(newLaneIdx).cells(newCellIdx).vehicle = Some(vac.vehicle)
+          case NextAreaRoadSegment(_, actor) =>
+            val messageContents = (actor, roadId, vac.copy(laneIdx = newLaneIdx, cellIdx = newCellIdx))
+            vehiclesAndCoordinatesOutOfArea += messageContents
         }
       } else {
         lanes(newLaneIdx).cells(newCellIdx).vehicle = Some(vac.vehicle)
@@ -108,6 +263,11 @@ class RoadCell {
 object RoadDirection extends Enumeration {
   type RoadDirection = Value
   val NS, SN, WE, EW = Value
+}
+
+object LightsDirection extends Enumeration {
+  type LightsDirection = Value
+  val Horizontal, Vertical = Value
 }
 
 trait RoadIn

@@ -1,13 +1,14 @@
 package miss.trafficsimulation.roads
 
-import miss.trafficsimulation.traffic.{VehicleId, Car}
+import miss.trafficsimulation.roads.RoadDirection.NS
+import miss.trafficsimulation.traffic.{Car, VehicleId}
 import miss.trafficsimulation.util._
 import org.specs2.mutable.Specification
 
 class RoadSegmentSpecification extends Specification {
   "RoadSegment" should {
     "iterate through cars in proper way" in {
-      val roadSegment = new RoadSegment(RoadId(1), 3, 7, None, null)
+      val roadSegment = new RoadSegment(RoadId(1), 3, 7, None, null, NS)
       roadSegment.lanes(0).cells(6).vehicle = Some(Car(VehicleId("1"), 2, 1, Yellow))
       roadSegment.lanes(1).cells(5).vehicle = Some(Car(VehicleId("2"), 2, 1, Magenta))
       roadSegment.lanes(2).cells(5).vehicle = Some(Car(VehicleId("3"), 2, 1, Cyan))
