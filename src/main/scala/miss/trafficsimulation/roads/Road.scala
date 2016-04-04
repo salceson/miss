@@ -225,7 +225,7 @@ class RoadSegment(val roadId: RoadId,
       val oldCellIdx = vac.cellIdx
       val cells = move.cellsCount
       var newLaneIdx = oldLaneIdx
-      val gotToNewSegment = (oldCellIdx + cells) > laneLength
+      val gotToNewSegment = (oldCellIdx + cells) >= laneLength
       val newCellIdx = (oldCellIdx + cells) % laneLength
       move.direction match {
         case Turn =>
