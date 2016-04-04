@@ -1,6 +1,7 @@
 package miss.visualization
 
-import java.awt.Color //FIXME can replace with scala.swing.Color?
+import miss.trafficsimulation.util._
+import Color._
 
 import com.typesafe.config.ConfigFactory
 
@@ -29,23 +30,23 @@ class Canvas extends Component {
   preferredSize = new Dimension(canvasSize, canvasSize)
 
   override protected def paintComponent(g: Graphics2D): Unit = {
-    g.setBackground(Color.white)
+    g.setBackground(White)
     drawRoads(g)
-    moveCar(g, new Point(5, 10), new Point(6, 17), Color.YELLOW)
-    moveCar(g, new Point(5, 15), new Point(5, 17), Color.RED)
+    moveCar(g, new Point(5, 10), new Point(6, 17), Yellow)
+    moveCar(g, new Point(5, 15), new Point(5, 17), Red)
 
-    moveCar(g, new Point(10, 20), new Point(5, 23), Color.GREEN)
-    moveCar(g, new Point(11, 20), new Point(7, 21), Color.RED)
-    moveCar(g, new Point(8, 20), new Point(3, 20), Color.CYAN)
+    moveCar(g, new Point(10, 20), new Point(5, 23), Green)
+    moveCar(g, new Point(11, 20), new Point(7, 21), Red)
+    moveCar(g, new Point(8, 20), new Point(3, 20), Cyan)
 
-    moveCar(g, new Point(17, 5), new Point(14, 5), Color.MAGENTA)
-    moveCar(g, new Point(16, 6), new Point(12, 6), Color.BLUE)
-    moveCar(g, new Point(21, 5), new Point(14, 6), Color.GREEN)
+    moveCar(g, new Point(17, 5), new Point(14, 5), Magenta)
+    moveCar(g, new Point(16, 6), new Point(12, 6), Blue)
+    moveCar(g, new Point(21, 5), new Point(14, 6), Green)
   }
 
   private def drawRoads(g: Graphics2D): Unit = {
     //horizontal roads
-    g.setColor(Color.decode("#999999"))
+    g.setColor(getColorFromHTMLHex("#999999"))
     for(i <- 0 until areaSize) {
       g.fillRect(0, cellSize * ((0.5 * roadSegSize).toInt + i * (roadSegSize + lanesCount)), canvasSize, cellSize * lanesCount)
     }

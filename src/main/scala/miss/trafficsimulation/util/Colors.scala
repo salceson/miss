@@ -1,11 +1,22 @@
 package miss.trafficsimulation.util
 
+import scala.language.implicitConversions
+
 class Color(val r: Int, val g: Int, val b: Int)
 
 object Color {
   def apply(r: Int, g: Int, b: Int): Color = new Color(r, g, b)
 
   def unapply(c: Color): Option[(Int, Int, Int)] = Some((c.r, c.g, c.b))
+
+  implicit def toColor(color: Color): swing.Color = {
+    new swing.Color(color.r, color.g, color.b)
+  }
+
+  def getColorFromHTMLHex(htmlHex: String): Color = {
+    val awtColor = java.awt.Color.decode(htmlHex)
+    Color(awtColor.getRed, awtColor.getGreen, awtColor.getBlue)
+  }
 }
 
 case object Red extends Color(255, 0, 0)
