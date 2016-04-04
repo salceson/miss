@@ -34,9 +34,9 @@ class Canvas extends Component {
     moveCar(g, new Point(5, 10), new Point(6, 17), Yellow)
     moveCar(g, new Point(5, 15), new Point(5, 17), Red)
 
-    moveCar(g, new Point(10, 20), new Point(5, 23), Green)
-    moveCar(g, new Point(11, 20), new Point(7, 21), Red)
-    moveCar(g, new Point(8, 20), new Point(3, 20), Cyan)
+    moveCar(g, new Point(2, 20), new Point(5, 23), Green)
+    moveCar(g, new Point(3, 20), new Point(7, 21), Red)
+    moveCar(g, new Point(3, 18), new Point(8, 18), Cyan)
 
     moveCar(g, new Point(17, 5), new Point(14, 5), Magenta)
     moveCar(g, new Point(16, 6), new Point(12, 6), Blue)
