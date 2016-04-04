@@ -1,11 +1,10 @@
 package miss.visualization
 
-import miss.trafficsimulation.util._
-import Color._
-
 import com.typesafe.config.ConfigFactory
+import miss.trafficsimulation.util.Color._
+import miss.trafficsimulation.util._
 
-import scala.swing.{Point, Graphics2D, Dimension, Component}
+import scala.swing.{Component, Dimension, Graphics2D, Point}
 
 /**
   * NOTE: all point coordinates are scaled by cellSize set in configuration
@@ -47,12 +46,12 @@ class Canvas extends Component {
   private def drawRoads(g: Graphics2D): Unit = {
     //horizontal roads
     g.setColor(getColorFromHTMLHex("#999999"))
-    for(i <- 0 until areaSize) {
+    for (i <- 0 until areaSize) {
       g.fillRect(0, cellSize * ((0.5 * roadSegSize).toInt + i * (roadSegSize + lanesCount)), canvasSize, cellSize * lanesCount)
     }
 
     //vertical roads
-    for(i <- 0 until areaSize) {
+    for (i <- 0 until areaSize) {
       g.fillRect(cellSize * ((0.5 * roadSegSize).toInt + i * (roadSegSize + lanesCount)), 0, cellSize * lanesCount, canvasSize)
     }
   }

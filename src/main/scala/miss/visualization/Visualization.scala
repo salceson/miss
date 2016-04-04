@@ -2,7 +2,7 @@ package miss.visualization
 
 import com.typesafe.config.ConfigFactory
 
-import swing._
+import scala.swing._
 
 /**
   * @author Michal Janczykowski
