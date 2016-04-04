@@ -259,9 +259,9 @@ class RoadSegment(val roadId: RoadId,
 
   private def areLightsRed(lightsDirection: LightsDirection): Boolean = {
     if (roadDirection == NS || roadDirection == SN) {
-      lightsDirection == Vertical
-    } else {
       lightsDirection == Horizontal
+    } else {
+      lightsDirection == Vertical
     }
   }
 }

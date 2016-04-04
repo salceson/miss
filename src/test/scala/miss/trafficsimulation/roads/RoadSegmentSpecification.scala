@@ -69,12 +69,17 @@ class RoadSegmentSpecification extends Specification {
       horizontalRoadSegmentOut.lanes(0).cells(2).vehicle = Some(Car(VehicleId("2"), 10, 1, Red, 5, 0))
       verticalRoadSegmentOut.lanes(1).cells(2).vehicle = Some(Car(VehicleId("3"), 10, 1, Blue, 5, 0))
       verticalRoadSegmentOut.lanes(2).cells(0).vehicle = Some(Car(VehicleId("4"), 10, 1, Green, 5, 0))
-      val listOfPossibleMoves = horizontalRoadSegmentIn.calculatePossibleMoves(VehicleAndCoordinates(
+      val listOfPossibleMovesVertical = horizontalRoadSegmentIn.calculatePossibleMoves(VehicleAndCoordinates(
         car, 0, 7), Vertical)
-      listOfPossibleMoves must contain(
+      val listOfPossibleMovesHorizontal = horizontalRoadSegmentIn.calculatePossibleMoves(VehicleAndCoordinates(
+        car, 0, 7), Horizontal)
+      listOfPossibleMovesHorizontal must contain(
         Move(GoStraight, 0, 4),
         Move(Turn, 1, 4),
         Move(Turn, 0, 5)
+      )
+      listOfPossibleMovesVertical must contain(
+        Move(GoStraight, 0, 2)
       )
     }
   }
