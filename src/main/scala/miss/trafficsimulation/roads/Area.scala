@@ -121,7 +121,7 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
     while (segmentsQueue.nonEmpty) {
       val segment = segmentsQueue.dequeue().asInstanceOf[RoadSegment]
       if (canCalculate(segment, segmentsDone)) {
-        vehiclesAndCoordinatesOutOfArea ++= segment.simulate()
+        vehiclesAndCoordinatesOutOfArea ++= segment.simulate(intersectionGreenLightsDirection)
         segmentsDone(segment) = true
       } else {
         segmentsQueue.enqueue(segment)

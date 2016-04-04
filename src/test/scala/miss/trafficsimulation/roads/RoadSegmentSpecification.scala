@@ -1,7 +1,8 @@
 package miss.trafficsimulation.roads
 
+import miss.trafficsimulation.roads.LightsDirection.{Horizontal, Vertical}
 import miss.trafficsimulation.roads.RoadDirection.{EW, NS}
-import miss.trafficsimulation.traffic.MoveDirection.{GoStraight, Turn, SwitchLaneLeft, SwitchLaneRight}
+import miss.trafficsimulation.traffic.MoveDirection.{GoStraight, SwitchLaneLeft, SwitchLaneRight, Turn}
 import miss.trafficsimulation.traffic.{Car, Move, VehicleId}
 import miss.trafficsimulation.util._
 import org.specs2.mutable.Specification
@@ -36,9 +37,9 @@ class RoadSegmentSpecification extends Specification {
       roadSegment.lanes(0).cells(5).vehicle = Some(Car(VehicleId("4"), 10, 1, Red, 5, 0))
       roadSegment.lanes(1).cells(9).vehicle = Some(Car(VehicleId("5"), 10, 1, Green, 5, 0))
       roadSegment.lanes(2).cells(5).vehicle = Some(Car(VehicleId("6"), 10, 1, Blue, 5, 0))
-      val actual1 = roadSegment.calculatePossibleMoves(VehicleAndCoordinates(car1, 0, 2))
-      val actual2 = roadSegment.calculatePossibleMoves(VehicleAndCoordinates(car2, 1, 2))
-      val actual3 = roadSegment.calculatePossibleMoves(VehicleAndCoordinates(car3, 2, 2))
+      val actual1 = roadSegment.calculatePossibleMoves(VehicleAndCoordinates(car1, 0, 2), Horizontal)
+      val actual2 = roadSegment.calculatePossibleMoves(VehicleAndCoordinates(car2, 1, 2), Horizontal)
+      val actual3 = roadSegment.calculatePossibleMoves(VehicleAndCoordinates(car3, 2, 2), Horizontal)
       actual1 must contain(
         Move(GoStraight, 0, 2),
         Move(SwitchLaneRight, 1, 5)
@@ -69,7 +70,7 @@ class RoadSegmentSpecification extends Specification {
       verticalRoadSegmentOut.lanes(1).cells(2).vehicle = Some(Car(VehicleId("3"), 10, 1, Blue, 5, 0))
       verticalRoadSegmentOut.lanes(2).cells(0).vehicle = Some(Car(VehicleId("4"), 10, 1, Green, 5, 0))
       val listOfPossibleMoves = horizontalRoadSegmentIn.calculatePossibleMoves(VehicleAndCoordinates(
-        car, 0, 7))
+        car, 0, 7), Vertical)
       listOfPossibleMoves must contain(
         Move(GoStraight, 0, 4),
         Move(Turn, 1, 4),

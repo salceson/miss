@@ -1,7 +1,8 @@
 package miss.trafficsimulation.roads
 
 import akka.actor.ActorRef
-import miss.trafficsimulation.roads.RoadDirection.{RoadDirection, NS, SN, EW, WE}
+import miss.trafficsimulation.roads.LightsDirection.{Horizontal, LightsDirection, Vertical}
+import miss.trafficsimulation.roads.RoadDirection.{EW, NS, RoadDirection, SN, WE}
 import miss.trafficsimulation.traffic.MoveDirection.{GoStraight, SwitchLaneLeft, SwitchLaneRight, Turn}
 import miss.trafficsimulation.traffic.{Move, Vehicle}
 
@@ -78,14 +79,15 @@ class RoadSegment(val roadId: RoadId,
     }
   }
 
-  private[roads] def calculatePossibleMoves(vac: VehicleAndCoordinates): List[Move] = {
+  private[roads] def calculatePossibleMoves(vac: VehicleAndCoordinates,
+                                            lightsDirection: LightsDirection): List[Move] = {
     val moves = ListBuffer[Move]()
     val distanceBeforeSegmentEnd = laneLength - vac.cellIdx - 1
     val isInFirstPartOfTheSegment = distanceBeforeSegmentEnd > MAX_DISTANCE
     if (isInFirstPartOfTheSegment) {
       moves ++= calculateMovesInFirstPart(vac, distanceBeforeSegmentEnd)
     } else {
-      moves ++= calculateMovesInSecondPart(vac, distanceBeforeSegmentEnd)
+      moves ++= calculateMovesInSecondPart(vac, distanceBeforeSegmentEnd, lightsDirection)
     }
     if (moves.isEmpty) {
       List(Move(GoStraight, vac.laneIdx, 0))
@@ -126,15 +128,18 @@ class RoadSegment(val roadId: RoadId,
     possibleMoves.toList
   }
 
-  //FIXME: Check lights direction
   private def calculateMovesInSecondPart(vac: VehicleAndCoordinates,
-                                         distanceBeforeSegmentEnd: Int): List[Move] = {
+                                         distanceBeforeSegmentEnd: Int,
+                                         lightsDirection: LightsDirection): List[Move] = {
     val possibleMoves = ListBuffer[Move]()
     val possibleStraightInThisSegment = getMaxPossibleCellsInLane(
       vac.cellIdx + 1, laneLength, vac.laneIdx)
     if (0 < possibleStraightInThisSegment && possibleStraightInThisSegment < distanceBeforeSegmentEnd) {
       possibleMoves += Move(GoStraight, vac.laneIdx, possibleStraightInThisSegment)
-    } else {
+    } else if (areLightsRed(lightsDirection) && distanceBeforeSegmentEnd > 0) {
+      possibleMoves +=
+        Move(GoStraight, vac.laneIdx, Math.min(possibleStraightInThisSegment, distanceBeforeSegmentEnd))
+    } else if (!areLightsRed(lightsDirection)) {
       out match {
         case _: NextAreaRoadSegment =>
           possibleMoves += Move(GoStraight, vac.laneIdx, possibleStraightInThisSegment + 1)
@@ -211,11 +216,11 @@ class RoadSegment(val roadId: RoadId,
     Math.min(maxPossible, MAX_DISTANCE)
   }
 
-  def simulate(): List[(ActorRef, RoadId, VehicleAndCoordinates)] = {
+  def simulate(lightsDirection: LightsDirection): List[(ActorRef, RoadId, VehicleAndCoordinates)] = {
     val vehiclesAndCoordinatesOutOfArea = ListBuffer[(ActorRef, RoadId, VehicleAndCoordinates)]()
 
     for (vac <- vehicleIterator()) {
-      val move = vac.vehicle.move(calculatePossibleMoves(vac))
+      val move = vac.vehicle.move(calculatePossibleMoves(vac, lightsDirection))
       val oldLaneIdx = vac.laneIdx
       val oldCellIdx = vac.cellIdx
       val cells = move.cellsCount
@@ -250,6 +255,14 @@ class RoadSegment(val roadId: RoadId,
     }
 
     vehiclesAndCoordinatesOutOfArea.toList
+  }
+
+  private def areLightsRed(lightsDirection: LightsDirection): Boolean = {
+    if (roadDirection == NS || roadDirection == SN) {
+      lightsDirection == Vertical
+    } else {
+      lightsDirection == Horizontal
+    }
   }
 }
 
