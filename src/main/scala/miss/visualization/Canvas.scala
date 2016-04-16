@@ -1,6 +1,8 @@
 package miss.visualization
 
 import com.typesafe.config.ConfigFactory
+import miss.trafficsimulation.roads.LightsDirection.LightsDirection
+import miss.trafficsimulation.roads.Road
 import miss.trafficsimulation.util.Color._
 import miss.trafficsimulation.util._
 
@@ -13,18 +15,19 @@ import scala.swing.{Component, Dimension, Graphics2D, Point}
   */
 class Canvas extends Component {
   val config = ConfigFactory.load()
+
   val trafficSimulationConfig = config.getConfig("trafficsimulation")
   val areaConfig = trafficSimulationConfig.getConfig("area")
   val visConfig = trafficSimulationConfig.getConfig("visualization")
-
   val cellSize = visConfig.getInt("cell_size")
-  val halfCellSize = (cellSize * 0.5).toInt
 
+  val halfCellSize = (cellSize * 0.5).toInt
   val roadSegSize = areaConfig.getInt("cells_between_intersections")
+
   val areaSize = areaConfig.getInt("size")
   val lanesCount = areaConfig.getInt("lanes")
-
   val canvasSize = cellSize * (areaSize * roadSegSize + areaSize * lanesCount)
+
 
   preferredSize = new Dimension(canvasSize, canvasSize)
 
@@ -64,5 +67,11 @@ class Canvas extends Component {
   private def moveCar(g: Graphics2D, from: Point, to: Point, c: Color): Unit = {
     drawCar(g, to, c)
     g.drawLine(from.x * cellSize + halfCellSize, from.y * cellSize + halfCellSize, to.x * cellSize + halfCellSize, to.y * cellSize + halfCellSize)
+  }
+
+  def updateTraffic(horizontalRoads: List[Road],
+                    verticalRoads: List[Road],
+                    intersectionGreenLightsDirection: LightsDirection): Unit = {
+
   }
 }

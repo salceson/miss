@@ -21,6 +21,10 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
   private val roadSegmentsLength = areaConfig.getInt("cells_between_intersections")
   private val lanesNum = areaConfig.getInt("lanes")
 
+  private val vehicleConfig = config.getConfig("vehicle")
+  private val maxVelocity = vehicleConfig.getInt("max_velocity")
+  private val maxAcceleration = vehicleConfig.getInt("max_acceleration")
+
   private val intersections = ofDim[Intersection](verticalRoadsDefs.size, horizontalRoadsDefs.size)
 
   for (x <- verticalRoadsDefs.indices; y <- horizontalRoadsDefs.indices) {
@@ -57,7 +61,8 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
     //first segment
     val firstIntersection = orderedIntersections.head
     val firstSegment = new RoadSegment(roadDef.roadId, lanesNum,
-      roadSegmentsLength, None, firstIntersection, roadDef.direction)
+      roadSegmentsLength, None, firstIntersection, roadDef.direction,
+      maxVelocity, maxAcceleration)
     if (horizontal) {
       firstIntersection.horizontalRoadIn = firstSegment
     } else {
@@ -70,7 +75,8 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
       val prevIntersection = orderedIntersections(x - 1)
       val nextIntersection = orderedIntersections(x)
       val segment = new RoadSegment(roadDef.roadId, lanesNum,
-        roadSegmentsLength, Some(prevIntersection), nextIntersection, roadDef.direction)
+        roadSegmentsLength, Some(prevIntersection), nextIntersection, roadDef.direction,
+        maxVelocity, maxAcceleration)
       if (horizontal) {
         prevIntersection.horizontalRoadOut = segment
         nextIntersection.horizontalRoadIn = segment
@@ -86,7 +92,8 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
     //last segment
     val lastIntersection = orderedIntersections.last
     val lastSegment = new RoadSegment(roadDef.roadId, lanesNum,
-      roadSegmentsLength, Some(lastIntersection), roadDef.nextRoadElem, roadDef.direction)
+      roadSegmentsLength, Some(lastIntersection), roadDef.nextRoadElem, roadDef.direction,
+      maxVelocity, maxAcceleration)
     if (horizontal) {
       lastIntersection.horizontalRoadOut = lastSegment
     } else {

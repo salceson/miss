@@ -60,9 +60,9 @@ class RoadSegment(val roadId: RoadId,
                   val laneLength: Int,
                   val in: Option[RoadElem],
                   val out: RoadElem,
-                  val roadDirection: RoadDirection) extends RoadElem {
-
-  private val MAX_DISTANCE = laneLength / 2
+                  val roadDirection: RoadDirection,
+                  val maxVelocity: Int,
+                  val maxAcceleration: Int) extends RoadElem {
 
   val lanes: List[Lane] = List.fill(lanesCount)(new Lane(laneLength))
 
@@ -83,7 +83,7 @@ class RoadSegment(val roadId: RoadId,
                                             lightsDirection: LightsDirection): List[Move] = {
     val moves = ListBuffer[Move]()
     val distanceBeforeSegmentEnd = laneLength - vac.cellIdx - 1
-    val isInFirstPartOfTheSegment = distanceBeforeSegmentEnd > MAX_DISTANCE
+    val isInFirstPartOfTheSegment = distanceBeforeSegmentEnd > maxVelocity
     if (isInFirstPartOfTheSegment) {
       moves ++= calculateMovesInFirstPart(vac, distanceBeforeSegmentEnd)
     } else {
@@ -102,7 +102,7 @@ class RoadSegment(val roadId: RoadId,
 
     //Go straight
     val maxPossibleCellsStraight = getMaxPossibleCellsInLane(
-      vac.cellIdx + 1, vac.cellIdx + MAX_DISTANCE + 1, vac.laneIdx)
+      vac.cellIdx + 1, vac.cellIdx + maxVelocity + 1, vac.laneIdx)
     if (maxPossibleCellsStraight > 0) {
       possibleMoves += Move(GoStraight, vac.laneIdx, maxPossibleCellsStraight)
     }
@@ -110,7 +110,7 @@ class RoadSegment(val roadId: RoadId,
     //Switch lane left
     if (vac.laneIdx > 0) {
       val maxPossibleCellsSwitchLaneLeft = getMaxPossibleCellsInLane(
-        vac.cellIdx + 1, vac.cellIdx + MAX_DISTANCE + 1, vac.laneIdx - 1)
+        vac.cellIdx + 1, vac.cellIdx + maxVelocity + 1, vac.laneIdx - 1)
       if (maxPossibleCellsSwitchLaneLeft > 0) {
         possibleMoves += Move(SwitchLaneLeft, vac.laneIdx - 1, maxPossibleCellsSwitchLaneLeft)
       }
@@ -119,7 +119,7 @@ class RoadSegment(val roadId: RoadId,
     //Switch lane right
     if (vac.laneIdx < lanesCount - 1) {
       val maxPossibleCellsSwitchLaneRight = getMaxPossibleCellsInLane(
-        vac.cellIdx + 1, vac.cellIdx + MAX_DISTANCE + 1, vac.laneIdx + 1)
+        vac.cellIdx + 1, vac.cellIdx + maxVelocity + 1, vac.laneIdx + 1)
       if (maxPossibleCellsSwitchLaneRight > 0) {
         possibleMoves += Move(SwitchLaneRight, vac.laneIdx + 1, maxPossibleCellsSwitchLaneRight)
       }
@@ -148,7 +148,7 @@ class RoadSegment(val roadId: RoadId,
           val turnSegment = i.turnRoadSegment(this)
           //Go straight
           val possibleStraightInNextSegment = nextSegment.getMaxPossibleCellsInLane(
-            0, MAX_DISTANCE - possibleStraightInThisSegment, vac.laneIdx
+            0, maxVelocity - possibleStraightInThisSegment, vac.laneIdx
           )
           if (possibleStraightInThisSegment + possibleStraightInNextSegment > 0) {
             possibleMoves += Move(GoStraight, vac.laneIdx,
@@ -166,7 +166,7 @@ class RoadSegment(val roadId: RoadId,
             if (turnPossible) {
               for (newLaneIdx <- 0 until lanesCount) {
                 val possibleInTurnSegment = turnSegment.getMaxPossibleCellsInLane(
-                  0, MAX_DISTANCE - possibleStraightInThisSegment, newLaneIdx
+                  0, maxVelocity - possibleStraightInThisSegment, newLaneIdx
                 )
                 if (possibleInTurnSegment > 0) {
                   possibleMoves += Move(Turn, newLaneIdx,
@@ -187,7 +187,7 @@ class RoadSegment(val roadId: RoadId,
             if (turnPossible) {
               for (newLaneIdx <- 0 until lanesCount) {
                 val possibleInTurnSegment = turnSegment.getMaxPossibleCellsInLane(
-                  0, MAX_DISTANCE - possibleStraightInThisSegment, newLaneIdx
+                  0, maxVelocity - possibleStraightInThisSegment, newLaneIdx
                 )
                 if (possibleInTurnSegment > 0) {
                   possibleMoves += Move(Turn, newLaneIdx,
@@ -213,7 +213,7 @@ class RoadSegment(val roadId: RoadId,
         isPossible = false
       }
     }
-    Math.min(maxPossible, MAX_DISTANCE)
+    Math.min(maxPossible, maxVelocity)
   }
 
   def simulate(lightsDirection: LightsDirection): List[(ActorRef, RoadId, VehicleAndCoordinates)] = {

@@ -11,7 +11,7 @@ import org.specs2.mutable.Specification
 class RoadSegmentSpecification extends Specification {
   "RoadSegment" should {
     "iterate through cars in proper way" in {
-      val roadSegment = new RoadSegment(RoadId(1), 3, 7, None, null, NS)
+      val roadSegment = new RoadSegment(RoadId(1), 3, 7, None, null, NS, 5, 1)
       roadSegment.lanes(0).cells(6).vehicle = Some(Car(VehicleId("1"), 2, 1, Yellow))
       roadSegment.lanes(1).cells(5).vehicle = Some(Car(VehicleId("2"), 2, 1, Magenta))
       roadSegment.lanes(2).cells(5).vehicle = Some(Car(VehicleId("3"), 2, 1, Cyan))
@@ -27,7 +27,7 @@ class RoadSegmentSpecification extends Specification {
       actual mustEqual expected
     }
     "correctly calculate possible moves (first half of road)" in {
-      val roadSegment = new RoadSegment(RoadId(1), 3, 10, None, null, NS)
+      val roadSegment = new RoadSegment(RoadId(1), 3, 10, None, null, NS, 5, 1)
       val car1 = Car(VehicleId("1"), 10, 1, Black, 5, 0)
       val car2 = Car(VehicleId("2"), 10, 1, White, 5, 0)
       val car3 = Car(VehicleId("3"), 10, 1, Yellow, 5, 0)
@@ -56,10 +56,10 @@ class RoadSegmentSpecification extends Specification {
     }
     "correctly calculate possible moves (second half of road)" in {
       val intersection = new Intersection()
-      val horizontalRoadSegmentIn = new RoadSegment(RoadId(1), 3, 10, None, intersection, EW)
-      val horizontalRoadSegmentOut = new RoadSegment(RoadId(1), 3, 10, Some(intersection), null, EW)
-      val verticalRoadSegmentIn = new RoadSegment(RoadId(2), 3, 10, None, intersection, NS)
-      val verticalRoadSegmentOut = new RoadSegment(RoadId(2), 3, 10, Some(intersection), null, NS)
+      val horizontalRoadSegmentIn = new RoadSegment(RoadId(1), 3, 10, None, intersection, EW, 5, 1)
+      val horizontalRoadSegmentOut = new RoadSegment(RoadId(1), 3, 10, Some(intersection), null, EW, 5, 1)
+      val verticalRoadSegmentIn = new RoadSegment(RoadId(2), 3, 10, None, intersection, NS, 5, 1)
+      val verticalRoadSegmentOut = new RoadSegment(RoadId(2), 3, 10, Some(intersection), null, NS, 5, 1)
       intersection.horizontalRoadIn = horizontalRoadSegmentIn
       intersection.horizontalRoadOut = horizontalRoadSegmentOut
       intersection.verticalRoadIn = verticalRoadSegmentIn
