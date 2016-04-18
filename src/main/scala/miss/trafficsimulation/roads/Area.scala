@@ -2,8 +2,8 @@ package miss.trafficsimulation.roads
 
 import akka.actor.ActorRef
 import com.typesafe.config.Config
-import miss.trafficsimulation.roads.LightsDirection.{LightsDirection, Horizontal, Vertical}
-import miss.trafficsimulation.roads.RoadDirection.{RoadDirection, NS, SN}
+import miss.trafficsimulation.roads.LightsDirection.{Horizontal, LightsDirection, Vertical}
+import miss.trafficsimulation.roads.RoadDirection.{NS, RoadDirection, SN}
 
 import scala.Array.ofDim
 import scala.collection.mutable
@@ -157,6 +157,15 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
     } else {
       Vertical
     }
+  }
+
+  // TODO: Implement below
+  def isReadyForComputation(currentTimeFrame: Long): Boolean = {
+    ???
+  }
+
+  def putIncomingTraffic(roadId: RoadId, timeFrame: Long, traffic: List[VehicleAndCoordinates]): Unit = {
+    ???
   }
 
 }

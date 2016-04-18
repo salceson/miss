@@ -14,6 +14,8 @@ trait Vehicle {
   def move(possibleMoves: List[Move]): Move
 
   def color: Color
+
+  def timeFrame: Long
 }
 
 case class Car(id: VehicleId,
@@ -21,7 +23,8 @@ case class Car(id: VehicleId,
                maxAcceleration: Int,
                color: Color,
                var currentVelocity: Int = 0,
-               var currentAcceleration: Int = 0)
+               var currentAcceleration: Int = 0,
+               var timeFrame: Long)
   extends Vehicle {
   override def move(possibleMoves: List[Move]): Move = {
     currentAcceleration = Math.min(currentAcceleration + 1, maxAcceleration)

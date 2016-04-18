@@ -66,6 +66,27 @@ class RoadSegment(val roadId: RoadId,
 
   val lanes: List[Lane] = List.fill(lanesCount)(new Lane(laneLength))
 
+  /**
+    * Iterates through cars - but only at the specified timeFrame.
+    *
+    * @param timeFrame time frame number
+    * @return cars in proper order
+    */
+  private[roads] def vehicleIterator(timeFrame: Long): Iterator[VehicleAndCoordinates] = {
+    val cellIndicesIterator = (0 until laneLength).reverseIterator
+    cellIndicesIterator flatMap { cellIdx: Int =>
+      val laneIndicesIterator = (0 until lanesCount).reverseIterator
+      laneIndicesIterator flatMap { laneIdx: Int =>
+        lanes(laneIdx).cells(cellIdx).vehicle match {
+          case Some(vehicle) if vehicle.timeFrame == timeFrame =>
+            Iterator(VehicleAndCoordinates(vehicle, laneIdx, cellIdx))
+          case _ => Iterator.empty
+        }
+      }
+    }
+  }
+
+  //TODO: Check if needed
   private[roads] def vehicleIterator(): Iterator[VehicleAndCoordinates] = {
     val cellIndicesIterator = (0 until laneLength).reverseIterator
     cellIndicesIterator flatMap { cellIdx: Int =>
