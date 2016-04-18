@@ -9,8 +9,7 @@ import scala.Array.ofDim
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-case class AreaRoadDefinition(roadId: RoadId, direction: RoadDirection,
-                              previousRoadElem: RoadIn, nextRoadElem: RoadElem)
+case class AreaRoadDefinition(roadId: RoadId, direction: RoadDirection, outgoingActorRef: ActorRef)
 
 class Area(verticalRoadsDefs: List[AreaRoadDefinition],
            horizontalRoadsDefs: List[AreaRoadDefinition],
@@ -92,8 +91,8 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
     //last segment
     val lastIntersection = orderedIntersections.last
     val lastSegment = new RoadSegment(roadDef.roadId, lanesNum,
-      roadSegmentsLength, Some(lastIntersection), roadDef.nextRoadElem, roadDef.direction,
-      maxVelocity, maxAcceleration)
+      roadSegmentsLength, Some(lastIntersection), NextAreaRoadSegment(roadDef.roadId, roadDef.outgoingActorRef),
+      roadDef.direction, maxVelocity, maxAcceleration)
     if (horizontal) {
       lastIntersection.horizontalRoadOut = lastSegment
     } else {
