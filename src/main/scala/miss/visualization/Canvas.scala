@@ -2,10 +2,12 @@ package miss.visualization
 
 import com.typesafe.config.ConfigFactory
 import miss.trafficsimulation.roads.LightsDirection.LightsDirection
-import miss.trafficsimulation.roads.Road
+import miss.trafficsimulation.roads.{Road, RoadSegment}
+import miss.trafficsimulation.traffic.{Vehicle, VehicleId}
 import miss.trafficsimulation.util.Color._
 import miss.trafficsimulation.util._
 
+import scala.collection.immutable.HashMap
 import scala.swing.{Component, Dimension, Graphics2D, Point}
 
 /**
@@ -28,6 +30,8 @@ class Canvas extends Component {
   val lanesCount = areaConfig.getInt("lanes")
   val canvasSize = cellSize * (areaSize * roadSegSize + areaSize * lanesCount)
 
+  var currentPositions = new HashMap[VehicleId, (Vehicle, Int, Int)]
+  var prevPositions = new HashMap[VehicleId, (Vehicle, Int, Int)]
 
   preferredSize = new Dimension(canvasSize, canvasSize)
 
@@ -73,5 +77,26 @@ class Canvas extends Component {
                     verticalRoads: List[Road],
                     intersectionGreenLightsDirection: LightsDirection): Unit = {
 
+    for ((road, i) <- horizontalRoads.view.zipWithIndex) {
+      for ((roadSeg, j) <- road.elems.collect({ case r: RoadSegment => r }).view.zipWithIndex) {
+        for (vac <- roadSeg.vehicleIterator()) {
+          val y = (0.5 * roadSegSize).toInt + i * (roadSegSize + lanesCount) + (lanesCount - vac.laneIdx - 1)
+          var x = vac.cellIdx
+          if (j > 0) {
+            x += x + (0.5 * roadSegSize).toInt
+          }
+          if (j > 1) {
+            x += (j - 1) * (roadSegSize + lanesCount)
+          }
+          x = areaSize * (roadSegSize + lanesCount) - 1 - x
+
+
+        }
+      }
+    }
+
+    for ((road, i) <- verticalRoads.view.zipWithIndex) {
+
+    }
   }
 }
