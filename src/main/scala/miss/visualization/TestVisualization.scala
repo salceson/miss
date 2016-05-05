@@ -6,6 +6,7 @@ import miss.trafficsimulation.util.Yellow
 import miss.visualization.VisualizationActor.TrafficState
 
 import scala.concurrent.duration._
+import scala.language.postfixOps
 
 trait TestRoads {
   val h02seg = new RoadSegment(RoadId(1), 3, 10, None, null, RoadDirection.EW, 5, 1)
@@ -49,12 +50,14 @@ object TestVisualization extends Visualization{
 
   val trafficState2 = {
     val testRoads = new TestRoads {
-      h00seg.lanes(0).cells(6).vehicle = Some(Car(VehicleId("1"), 2, 1, Yellow, 0))
+      h01seg.lanes(0).cells(2).vehicle = Some(Car(VehicleId("1"), 2, 1, Yellow, 0))
     }
 
     TrafficState(testRoads.hRoads, testRoads.vRoads, LightsDirection.Horizontal)
   }
 
-  system.scheduler.scheduleOnce(5 seconds, actor, trafficState1)
-  system.scheduler.scheduleOnce(10 seconds, actor, trafficState2)
+  implicit val executor = system.dispatcher
+
+  system.scheduler.scheduleOnce(2 seconds, actor, trafficState1)
+  system.scheduler.scheduleOnce(4 seconds, actor, trafficState2)
 }
