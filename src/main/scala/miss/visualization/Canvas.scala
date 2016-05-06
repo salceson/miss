@@ -99,7 +99,7 @@ class Canvas extends Component {
 
           var x = vac.cellIdx
           if (j > 0) {
-            x += halfRoadSegSize
+            x += halfRoadSegSize + lanesCount
           }
           if (j > 1) {
             x += (j - 1) * (roadSegSize + lanesCount)
@@ -126,7 +126,7 @@ class Canvas extends Component {
 
           var y = vac.cellIdx
           if (j > 0) {
-            y += halfRoadSegSize
+            y += halfRoadSegSize + lanesCount
           }
           if (j > 1) {
             y += (j - 1) * (roadSegSize + lanesCount)
