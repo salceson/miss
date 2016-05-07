@@ -32,6 +32,11 @@ trait Visualization extends SimpleSwingApplication {
     new MainFrame {
       title = "Traffic Simulation Visualization"
       contents = canvas
+
+      override def closeOperation(): Unit = {
+        system.terminate()
+        super.closeOperation()
+      }
     }
   }
 }
