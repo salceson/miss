@@ -22,9 +22,9 @@ case class Car(id: VehicleId,
                maxVelocity: Int,
                maxAcceleration: Int,
                color: Color,
+               var timeFrame: Long,
                var currentVelocity: Int = 0,
-               var currentAcceleration: Int = 0,
-               var timeFrame: Long)
+               var currentAcceleration: Int = 0)
   extends Vehicle {
   override def move(possibleMoves: List[Move]): Move = {
     currentAcceleration = Math.min(currentAcceleration + 1, maxAcceleration)

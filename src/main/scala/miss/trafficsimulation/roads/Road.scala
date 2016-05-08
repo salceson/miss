@@ -87,7 +87,8 @@ class RoadSegment(val roadId: RoadId,
   }
 
   //TODO: Check if needed
-  private[roads] def vehicleIterator(): Iterator[VehicleAndCoordinates] = {
+  // used in visualization
+  def vehicleIterator(): Iterator[VehicleAndCoordinates] = {
     val cellIndicesIterator = (0 until laneLength).reverseIterator
     cellIndicesIterator flatMap { cellIdx: Int =>
       val laneIndicesIterator = (0 until lanesCount).reverseIterator
