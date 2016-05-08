@@ -60,7 +60,7 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
     //first segment
     val firstIntersection = orderedIntersections.head
     val firstSegment = new RoadSegment(roadDef.roadId, lanesNum,
-      roadSegmentsLength, None, firstIntersection, roadDef.direction,
+      (roadSegmentsLength * 0.5).toInt, None, firstIntersection, roadDef.direction,
       maxVelocity, maxAcceleration)
     if (horizontal) {
       firstIntersection.horizontalRoadIn = firstSegment
@@ -91,7 +91,7 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
     //last segment
     val lastIntersection = orderedIntersections.last
     val lastSegment = new RoadSegment(roadDef.roadId, lanesNum,
-      roadSegmentsLength, Some(lastIntersection), NextAreaRoadSegment(roadDef.roadId, roadDef.outgoingActorRef),
+      (roadSegmentsLength * 0.5).toInt, Some(lastIntersection), NextAreaRoadSegment(roadDef.roadId, roadDef.outgoingActorRef),
       roadDef.direction, maxVelocity, maxAcceleration)
     if (horizontal) {
       lastIntersection.horizontalRoadOut = lastSegment
