@@ -24,14 +24,14 @@ class AreaActor extends FSM[State, Data] {
   when(Simulating) {
     case Event(msg@OutgoingTrafficInfo(roadId, timeFrame, outgoingTraffic), d@AreaData(area, currentTimeFrame)) =>
       log.info(s"Got $msg")
-      area.putIncomingTraffic(roadId, timeFrame, outgoingTraffic)
+      area.putIncomingTraffic(msg, currentTimeFrame)
       if (area.isReadyForComputation(currentTimeFrame)) {
         self ! ReadyForComputation(currentTimeFrame)
       }
       stay
     case Event(ReadyForComputation(timeframe), AreaData(area, previousTimeFrame)) if previousTimeFrame == timeframe =>
       val currentTimeFrame = previousTimeFrame + 1
-      val outgoingTraffic = area.simulate()
+      val outgoingTraffic = area.simulate(currentTimeFrame)
       outgoingTraffic groupBy {
         case (actorRef, roadId, _) => (actorRef, roadId)
       } foreach {
@@ -83,6 +83,11 @@ object AreaActor {
 
   case object EmptyData extends Data
 
+  /**
+    *
+    * @param area
+    * @param timeFrame last simulated time frame
+    */
   case class AreaData(area: Area, timeFrame: Long) extends Data
 
 }

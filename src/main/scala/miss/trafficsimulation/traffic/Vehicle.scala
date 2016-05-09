@@ -16,6 +16,14 @@ trait Vehicle {
   def color: Color
 
   def timeFrame: Long
+
+  def maxVelocity: Int
+
+  def maxAcceleration: Int
+
+  def currentVelocity: Int
+
+  def currentAcceleration: Int
 }
 
 case class Car(id: VehicleId,

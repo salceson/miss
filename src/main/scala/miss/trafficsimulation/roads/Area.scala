@@ -2,6 +2,7 @@ package miss.trafficsimulation.roads
 
 import akka.actor.ActorRef
 import com.typesafe.config.Config
+import miss.trafficsimulation.actors.AreaActor.OutgoingTrafficInfo
 import miss.trafficsimulation.roads.LightsDirection.{Horizontal, LightsDirection, Vertical}
 import miss.trafficsimulation.roads.RoadDirection.{NS, RoadDirection, SN}
 
@@ -24,6 +25,8 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
   private val maxVelocity = vehicleConfig.getInt("max_velocity")
   private val maxAcceleration = vehicleConfig.getInt("max_acceleration")
 
+  private val maxTimeFrameDelay = roadSegmentsLength / maxVelocity
+
   private val intersections = ofDim[Intersection](verticalRoadsDefs.size, horizontalRoadsDefs.size)
 
   for (x <- verticalRoadsDefs.indices; y <- horizontalRoadsDefs.indices) {
@@ -37,6 +40,14 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
   private[roads] val verticalRoads = verticalRoadsDefs.indices.map(
     (x: Int) => createRoad(verticalRoadsDefs(x), transposedIntersections(x).toList)
   )
+
+  private val roadsMap = Map((horizontalRoads ++ verticalRoads).map((r: Road) => r.id -> r): _*)
+
+  implicit val incomingTrafficOrdering = new Ordering[OutgoingTrafficInfo]{
+    override def compare(x: OutgoingTrafficInfo, y: OutgoingTrafficInfo): Int = -x.timeframe.compare(y.timeframe)
+  }
+
+  private val incomingTrafficQueue = mutable.PriorityQueue[OutgoingTrafficInfo]()
 
   private var intersectionGreenLightsDirection: LightsDirection = Horizontal
 
@@ -104,7 +115,11 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
     new Road(roadDef.roadId, roadDef.direction, roadElems.toList)
   }
 
-  def simulate(): List[(ActorRef, RoadId, VehicleAndCoordinates)] = {
+  /**
+    * @param timeFrame number of time frame to simulate
+    * @return
+    */
+  def simulate(timeFrame: Long): List[(ActorRef, RoadId, VehicleAndCoordinates)] = {
     val vehiclesAndCoordinatesOutOfArea = ListBuffer[(ActorRef, RoadId, VehicleAndCoordinates)]()
 
     val segmentsQueue = mutable.Queue[RoadElem]()
@@ -127,13 +142,14 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
     while (segmentsQueue.nonEmpty) {
       val segment = segmentsQueue.dequeue().asInstanceOf[RoadSegment]
       if (canCalculate(segment, segmentsDone)) {
-        vehiclesAndCoordinatesOutOfArea ++= segment.simulate(intersectionGreenLightsDirection)
+        vehiclesAndCoordinatesOutOfArea ++= segment.simulate(intersectionGreenLightsDirection, timeFrame)
         segmentsDone(segment) = true
       } else {
         segmentsQueue.enqueue(segment)
       }
     }
 
+    //TODO read green light duration from config
     intersectionGreenLightsDirection =
       if (intersectionGreenLightsDirection == Horizontal) Vertical else Horizontal
     vehiclesAndCoordinatesOutOfArea.toList
@@ -158,13 +174,37 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
     }
   }
 
-  // TODO: Implement below
+  // TODO: test
+  /**
+    * @param currentTimeFrame last computed frame
+    * @return true if next (currentTimeFrame + 1) frame can be simulated
+    */
   def isReadyForComputation(currentTimeFrame: Long): Boolean = {
-    ???
+    for (road <- horizontalRoads ++ verticalRoads) {
+      road.elems.head match {
+        case firstRoadSeg: RoadSegment => if (currentTimeFrame - firstRoadSeg.lastIncomingTrafficTimeFrame > maxTimeFrameDelay) {
+          return false
+        }
+        case _ => throw new ClassCastException
+      }
+    }
+
+    true
   }
 
-  def putIncomingTraffic(roadId: RoadId, timeFrame: Long, traffic: List[VehicleAndCoordinates]): Unit = {
-    ???
+  def putIncomingTraffic(msg: OutgoingTrafficInfo, currentTimeFrame : Long) : Unit = {
+    incomingTrafficQueue += msg
+
+    while (incomingTrafficQueue.nonEmpty && incomingTrafficQueue.max.timeframe <= currentTimeFrame) {
+      val OutgoingTrafficInfo(roadId, timeFrame, outgoingTraffic) = incomingTrafficQueue.dequeue()
+      val road = roadsMap(roadId)
+      road.elems.head match {
+        case firstRoadSeg: RoadSegment => if (currentTimeFrame - firstRoadSeg.lastIncomingTrafficTimeFrame > maxTimeFrameDelay) {
+          firstRoadSeg.putTraffic(timeFrame, outgoingTraffic, intersectionGreenLightsDirection)
+        }
+        case _ => throw new ClassCastException
+      }
+    }
   }
 
 }
