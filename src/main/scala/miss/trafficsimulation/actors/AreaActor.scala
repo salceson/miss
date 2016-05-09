@@ -5,6 +5,8 @@ import com.typesafe.config.ConfigFactory
 import miss.trafficsimulation.actors.AreaActor.{Data, State}
 import miss.trafficsimulation.roads.{Area, AreaRoadDefinition, RoadId, VehicleAndCoordinates}
 
+import scala.collection.mutable
+
 class AreaActor extends FSM[State, Data] {
 
   import AreaActor._
@@ -29,21 +31,38 @@ class AreaActor extends FSM[State, Data] {
         self ! ReadyForComputation(currentTimeFrame)
       }
       stay
-    case msg@Event(ReadyForComputation(timeframe), AreaData(area, previousTimeFrame)) if previousTimeFrame == timeframe =>
+    case Event(msg@ReadyForComputation(timeFrame), AreaData(area, previousTimeFrame)) if previousTimeFrame == timeFrame =>
+      log.info(s"Time frame: $timeFrame")
       log.info(s"Got $msg")
       val currentTimeFrame = previousTimeFrame + 1
+      log.info(s"Simulating timeFrame $currentTimeFrame...")
       val outgoingTraffic = area.simulate(currentTimeFrame)
+      log.info(s"Messages to send: $outgoingTraffic")
+      val messagesSent = mutable.Map(area.actorsAndRoadIds.map({
+        case (a: ActorRef, r: RoadId) => (a, r) -> false
+      }): _*)
       outgoingTraffic groupBy {
         case (actorRef, roadId, _) => (actorRef, roadId)
       } foreach {
         case ((actorRef, roadId), list) =>
+          log.info(s"Sending to $actorRef; roadId: $roadId; traffic: $list")
+          messagesSent((actorRef, roadId)) = true
           actorRef ! OutgoingTrafficInfo(roadId, currentTimeFrame, list map {
             case (_, _, vac) => vac
           })
       }
+      messagesSent foreach {
+        case ((actorRef, roadId), false) =>
+          log.info(s"Sending to $actorRef; roadId: $roadId; traffic: No traffic")
+          actorRef ! OutgoingTrafficInfo(roadId, currentTimeFrame, List())
+        case _ =>
+      }
+      log.info("WTF")
       if (area.isReadyForComputation(currentTimeFrame)) {
+        log.info("READY")
         self ! ReadyForComputation(currentTimeFrame)
       }
+      log.info("NOPE")
       //TODO: Handle this here
       goto(Simulating) using AreaData(area, currentTimeFrame)
   }

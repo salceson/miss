@@ -41,9 +41,12 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
     (x: Int) => createRoad(verticalRoadsDefs(x), transposedIntersections(x).toList)
   )
 
+  val actorsAndRoadIds: List[(ActorRef, RoadId)] = (horizontalRoadsDefs ++ verticalRoadsDefs)
+    .map((ard: AreaRoadDefinition) => (ard.outgoingActorRef, ard.roadId))
+
   private val roadsMap = Map((horizontalRoads ++ verticalRoads).map((r: Road) => r.id -> r): _*)
 
-  implicit val incomingTrafficOrdering = new Ordering[OutgoingTrafficInfo]{
+  implicit val incomingTrafficOrdering = new Ordering[OutgoingTrafficInfo] {
     override def compare(x: OutgoingTrafficInfo, y: OutgoingTrafficInfo): Int = -x.timeframe.compare(y.timeframe)
   }
 
@@ -142,6 +145,7 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
     while (segmentsQueue.nonEmpty) {
       val segment = segmentsQueue.dequeue().asInstanceOf[RoadSegment]
       if (canCalculate(segment, segmentsDone)) {
+        //TODO: Check available space
         vehiclesAndCoordinatesOutOfArea ++= segment.simulate(intersectionGreenLightsDirection, timeFrame)
         segmentsDone(segment) = true
       } else {
@@ -192,7 +196,7 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
     true
   }
 
-  def putIncomingTraffic(msg: OutgoingTrafficInfo, currentTimeFrame : Long) : Unit = {
+  def putIncomingTraffic(msg: OutgoingTrafficInfo, currentTimeFrame: Long): Unit = {
     incomingTrafficQueue += msg
 
     while (incomingTrafficQueue.nonEmpty && incomingTrafficQueue.max.timeframe <= currentTimeFrame) {
