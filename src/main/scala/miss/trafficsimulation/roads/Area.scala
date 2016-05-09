@@ -25,7 +25,7 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
   private val maxVelocity = vehicleConfig.getInt("max_velocity")
   private val maxAcceleration = vehicleConfig.getInt("max_acceleration")
 
-  private val maxTimeFrameDelay = roadSegmentsLength / maxVelocity
+  private val maxTimeFrameDelay = (roadSegmentsLength * 0.5).toInt / maxVelocity
 
   private val intersections = ofDim[Intersection](verticalRoadsDefs.size, horizontalRoadsDefs.size)
 
