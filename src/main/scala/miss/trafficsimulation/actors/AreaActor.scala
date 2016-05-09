@@ -31,10 +31,10 @@ class AreaActor extends FSM[State, Data] {
         self ! ReadyForComputation(area.currentTimeFrame)
       }
       stay
-    case Event(msg@ReadyForComputation(timeFrame), AreaData(area, previousTimeFrame)) if previousTimeFrame == timeFrame =>
+    case Event(msg@ReadyForComputation(timeFrame), AreaData(area)) if area.currentTimeFrame == timeFrame =>
       log.info(s"Time frame: $timeFrame")
       log.info(s"Got $msg")
-      log.info(s"Simulating timeFrame $currentTimeFrame...")
+      log.info(s"Simulating timeFrame ${area.currentTimeFrame}...")
       val outgoingTraffic = area.simulate()
       log.info(s"Messages to send: $outgoingTraffic")
       val messagesSent = mutable.Map(area.actorsAndRoadIds.map({
