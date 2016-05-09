@@ -29,7 +29,8 @@ class AreaActor extends FSM[State, Data] {
         self ! ReadyForComputation(currentTimeFrame)
       }
       stay
-    case Event(ReadyForComputation(timeframe), AreaData(area, previousTimeFrame)) if previousTimeFrame == timeframe =>
+    case msg@Event(ReadyForComputation(timeframe), AreaData(area, previousTimeFrame)) if previousTimeFrame == timeframe =>
+      log.info(s"Got $msg")
       val currentTimeFrame = previousTimeFrame + 1
       val outgoingTraffic = area.simulate(currentTimeFrame)
       outgoingTraffic groupBy {
