@@ -23,4 +23,30 @@ class AreaSpecification extends Specification {
       area.horizontalRoads must have length 4
     }
   }
+
+  "Area" should {
+    "simulate some moves without incoming traffic data" in {
+      val area = createTestArea
+
+      area.isReadyForComputation(1) must beTrue
+      area.simulate(1)
+
+      area.isReadyForComputation(2) must beTrue
+      area.simulate(2)
+
+      area.isReadyForComputation(3) must beFalse
+    }
+  }
+
+  private def createTestArea: Area = {
+    val road1 = AreaRoadDefinition(RoadId(1), NS, null)
+    val road2 = AreaRoadDefinition(RoadId(2), SN, null)
+    val road3 = AreaRoadDefinition(RoadId(3), EW, null)
+    val road4 = AreaRoadDefinition(RoadId(4), WE, null)
+
+    val area = new Area(List(road1, road2),
+      List(road3, road4), ConfigFactory.load("simple_area.conf"))
+
+    area
+  }
 }
