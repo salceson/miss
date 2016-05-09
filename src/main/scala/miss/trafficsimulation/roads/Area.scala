@@ -185,6 +185,7 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
         case firstRoadSeg: RoadSegment => if (currentTimeFrame - firstRoadSeg.lastIncomingTrafficTimeFrame > maxTimeFrameDelay) {
           return false
         }
+        case _ => throw new ClassCastException
       }
     }
 
@@ -201,6 +202,7 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
         case firstRoadSeg: RoadSegment => if (currentTimeFrame - firstRoadSeg.lastIncomingTrafficTimeFrame > maxTimeFrameDelay) {
           firstRoadSeg.putTraffic(timeFrame, outgoingTraffic, intersectionGreenLightsDirection)
         }
+        case _ => throw new ClassCastException
       }
     }
     // TODO 2. pop incoming traffic info from priority queue (only those with time less or equal to currentTimeFrame),
