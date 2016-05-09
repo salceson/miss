@@ -18,33 +18,32 @@ class AreaActor extends FSM[State, Data] {
       val area = new Area(verticalRoadsDefs, horizontalRoadsDefs, config)
       Thread.sleep(5000) //TODO: Dirty magic
       self ! ReadyForComputation(0)
-      goto(Simulating) using AreaData(area, 0)
+      goto(Simulating) using AreaData(area)
   }
 
   when(Simulating) {
-    case Event(msg@OutgoingTrafficInfo(roadId, timeFrame, outgoingTraffic), d@AreaData(area, currentTimeFrame)) =>
+    case Event(msg@OutgoingTrafficInfo(roadId, timeFrame, outgoingTraffic), d@AreaData(area)) =>
       log.info(s"Got $msg")
-      area.putIncomingTraffic(msg, currentTimeFrame)
-      if (area.isReadyForComputation(currentTimeFrame)) {
-        self ! ReadyForComputation(currentTimeFrame)
+      area.putIncomingTraffic(msg)
+      if (area.isReadyForComputation()) {
+        self ! ReadyForComputation(area.currentTimeFrame)
       }
       stay
-    case Event(ReadyForComputation(timeframe), AreaData(area, previousTimeFrame)) if previousTimeFrame == timeframe =>
-      val currentTimeFrame = previousTimeFrame + 1
-      val outgoingTraffic = area.simulate(currentTimeFrame)
+    case Event(ReadyForComputation(timeframe), AreaData(area)) if area.currentTimeFrame == timeframe =>
+      val outgoingTraffic = area.simulate()
       outgoingTraffic groupBy {
         case (actorRef, roadId, _) => (actorRef, roadId)
       } foreach {
         case ((actorRef, roadId), list) =>
-          actorRef ! OutgoingTrafficInfo(roadId, currentTimeFrame, list map {
+          actorRef ! OutgoingTrafficInfo(roadId, area.currentTimeFrame, list map {
             case (_, _, vac) => vac
           })
       }
-      if (area.isReadyForComputation(currentTimeFrame)) {
-        self ! ReadyForComputation(currentTimeFrame)
+      if (area.isReadyForComputation()) {
+        self ! ReadyForComputation(area.currentTimeFrame)
       }
       //TODO: Handle this here
-      goto(Simulating) using AreaData(area, currentTimeFrame)
+      goto(Simulating) using AreaData(area)
   }
 }
 
@@ -84,10 +83,8 @@ object AreaActor {
   case object EmptyData extends Data
 
   /**
-    *
     * @param area
-    * @param timeFrame last simulated time frame
     */
-  case class AreaData(area: Area, timeFrame: Long) extends Data
+  case class AreaData(area: Area) extends Data
 
 }
