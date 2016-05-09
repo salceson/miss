@@ -24,7 +24,7 @@ class AreaActor extends FSM[State, Data] {
   when(Simulating) {
     case Event(msg@OutgoingTrafficInfo(roadId, timeFrame, outgoingTraffic), d@AreaData(area, currentTimeFrame)) =>
       log.info(s"Got $msg")
-      area.putIncomingTraffic(roadId, timeFrame, outgoingTraffic)
+      area.putIncomingTraffic(msg, currentTimeFrame)
       if (area.isReadyForComputation(currentTimeFrame)) {
         self ! ReadyForComputation(currentTimeFrame)
       }

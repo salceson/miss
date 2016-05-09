@@ -2,6 +2,7 @@ package miss.trafficsimulation.roads
 
 import akka.actor.ActorRef
 import com.typesafe.config.Config
+import miss.trafficsimulation.actors.AreaActor.OutgoingTrafficInfo
 import miss.trafficsimulation.roads.LightsDirection.{Horizontal, LightsDirection, Vertical}
 import miss.trafficsimulation.roads.RoadDirection.{NS, RoadDirection, SN}
 
@@ -39,6 +40,14 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
   private[roads] val verticalRoads = verticalRoadsDefs.indices.map(
     (x: Int) => createRoad(verticalRoadsDefs(x), transposedIntersections(x).toList)
   )
+
+  private val roadsMap = Map((horizontalRoads ++ verticalRoads).map((r: Road) => r.id -> r): _*)
+
+  implicit val incomingTrafficOrdering = new Ordering[OutgoingTrafficInfo]{
+    override def compare(x: OutgoingTrafficInfo, y: OutgoingTrafficInfo): Int = -x.timeframe.compare(y.timeframe)
+  }
+
+  private val incomingTrafficQueue = mutable.PriorityQueue[OutgoingTrafficInfo]()
 
   private var intersectionGreenLightsDirection: LightsDirection = Horizontal
 
@@ -140,6 +149,7 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
       }
     }
 
+    //TODO read green light duration from config
     intersectionGreenLightsDirection =
       if (intersectionGreenLightsDirection == Horizontal) Vertical else Horizontal
     vehiclesAndCoordinatesOutOfArea.toList
@@ -175,16 +185,25 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
         case firstRoadSeg: RoadSegment => if (currentTimeFrame - firstRoadSeg.lastIncomingTrafficTimeFrame > maxTimeFrameDelay) {
           return false
         }
-        case _ => throw new ClassCastException
       }
     }
 
     true
   }
 
-  def putIncomingTraffic(roadId: RoadId, timeFrame: Long, traffic: List[VehicleAndCoordinates]): Unit = {
-    // TODO 1. insert into priority queue (by min timeFrame).
-    // 2. pop incoming traffic info from priority queue (only those with time less or equal to currentTimeFrame),
+  def putIncomingTraffic(msg: OutgoingTrafficInfo, currentTimeFrame : Long) : Unit = {
+    incomingTrafficQueue += msg
+
+    while (incomingTrafficQueue.nonEmpty && incomingTrafficQueue.max.timeframe <= currentTimeFrame) {
+      val OutgoingTrafficInfo(roadId, timeFrame, outgoingTraffic) = incomingTrafficQueue.dequeue()
+      val road = roadsMap(roadId)
+      road.elems.head match {
+        case firstRoadSeg: RoadSegment => if (currentTimeFrame - firstRoadSeg.lastIncomingTrafficTimeFrame > maxTimeFrameDelay) {
+          firstRoadSeg.putTraffic(timeFrame, outgoingTraffic, intersectionGreenLightsDirection)
+        }
+      }
+    }
+    // TODO 2. pop incoming traffic info from priority queue (only those with time less or equal to currentTimeFrame),
     // insert incoming vehicles to road segs and simulate their moves for all frames up to current
     // (if current is 3, and incoming data is for 1, then run simulation for frames 2 and 3 (frame 1 was just for insertion))
     ???

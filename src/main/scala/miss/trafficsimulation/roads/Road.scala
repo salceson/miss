@@ -4,7 +4,7 @@ import akka.actor.ActorRef
 import miss.trafficsimulation.roads.LightsDirection.{Horizontal, LightsDirection, Vertical}
 import miss.trafficsimulation.roads.RoadDirection.{EW, NS, RoadDirection, SN, WE}
 import miss.trafficsimulation.traffic.MoveDirection.{GoStraight, SwitchLaneLeft, SwitchLaneRight, Turn}
-import miss.trafficsimulation.traffic.{Move, Vehicle}
+import miss.trafficsimulation.traffic.{Car, Move, Vehicle, VehicleId}
 
 import scala.collection.mutable.ListBuffer
 
@@ -67,6 +67,8 @@ class RoadSegment(val roadId: RoadId,
   val lanes: List[Lane] = List.fill(lanesCount)(new Lane(laneLength))
   var currentTimeFrame = 0 : Long //last computed time frame
   var lastIncomingTrafficTimeFrame = 0 : Long
+
+  var vehicleIdSequence = 0 : Long
 
   /**
     * Iterates through cars - but only at the specified timeFrame.
@@ -291,6 +293,36 @@ class RoadSegment(val roadId: RoadId,
     } else {
       lightsDirection == Vertical
     }
+  }
+
+  def availableCells(laneIdx: Int, limit: Int): Int = {
+    val cells = lanes(laneIdx).cells
+    for (i <- 0 to limit) {
+      if(cells(i).vehicle.isDefined)
+        return i - 1
+    }
+    limit
+  }
+
+  def putTraffic(incomingTrafficTimeFrame: Long, incomingTraffic: List[VehicleAndCoordinates], lightsDirection: LightsDirection): Unit = {
+    lastIncomingTrafficTimeFrame = incomingTrafficTimeFrame
+
+    for (VehicleAndCoordinates(vehicle, laneIdx, cellIdx) <- incomingTraffic) {
+      val cellToPutId = Math.min(cellIdx, availableCells(laneIdx, cellIdx))
+      val vehicleToPut = Car(getNextVehicleId, vehicle.maxVelocity, vehicle.maxAcceleration, vehicle.color, incomingTrafficTimeFrame, vehicle.currentVelocity, vehicle.currentAcceleration)
+      lanes(laneIdx).cells(cellToPutId).vehicle = Some(vehicleToPut)
+    }
+
+    for (timeFrame <- (incomingTrafficTimeFrame + 1) until currentTimeFrame) {
+      simulate(lightsDirection, timeFrame)
+    }
+
+  }
+
+  private def getNextVehicleId: VehicleId = {
+    val id = vehicleIdSequence
+    vehicleIdSequence += 1
+    VehicleId(id.toString)
   }
 }
 
