@@ -15,12 +15,12 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
            horizontalRoadsDefs: List[AreaRoadDefinition],
            config: Config) {
 
-  private val areaConfig = config.getConfig("area")
+  private val areaConfig = config.getConfig("trafficsimulation.area")
 
   private val roadSegmentsLength = areaConfig.getInt("cells_between_intersections")
   private val lanesNum = areaConfig.getInt("lanes")
 
-  private val vehicleConfig = config.getConfig("vehicle")
+  private val vehicleConfig = config.getConfig("trafficsimulation.vehicle")
   private val maxVelocity = vehicleConfig.getInt("max_velocity")
   private val maxAcceleration = vehicleConfig.getInt("max_acceleration")
 

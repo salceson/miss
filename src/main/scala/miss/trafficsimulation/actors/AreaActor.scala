@@ -65,9 +65,9 @@ object AreaActor {
 
   case class ReadyForComputation(timeframe: Long)
 
-  case class VisualizationStartRequest()
+  case class VisualizationStartRequest(visualizer: ActorRef)
 
-  case class VisualizationStopRequest()
+  case class VisualizationStopRequest(visualizer: ActorRef)
 
   // States:
 
