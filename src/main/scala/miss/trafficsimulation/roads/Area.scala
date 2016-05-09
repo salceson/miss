@@ -205,10 +205,6 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
         case _ => throw new ClassCastException
       }
     }
-    // TODO 2. pop incoming traffic info from priority queue (only those with time less or equal to currentTimeFrame),
-    // insert incoming vehicles to road segs and simulate their moves for all frames up to current
-    // (if current is 3, and incoming data is for 1, then run simulation for frames 2 and 3 (frame 1 was just for insertion))
-    ???
   }
 
 }
