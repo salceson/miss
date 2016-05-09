@@ -54,6 +54,10 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
 
   private var intersectionGreenLightsDirection: LightsDirection = Horizontal
 
+  private var _currentTimeFrame = 0 : Long
+
+  def currentTimeFrame : Long = _currentTimeFrame
+
   /**
     * Creates road for given definition and list of intersections.
     *
@@ -118,11 +122,9 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
     new Road(roadDef.roadId, roadDef.direction, roadElems.toList)
   }
 
-  /**
-    * @param timeFrame number of time frame to simulate
-    * @return
-    */
-  def simulate(timeFrame: Long): List[(ActorRef, RoadId, VehicleAndCoordinates)] = {
+  def simulate(): List[(ActorRef, RoadId, VehicleAndCoordinates)] = {
+    val timeFrame = currentTimeFrame + 1
+
     val vehiclesAndCoordinatesOutOfArea = ListBuffer[(ActorRef, RoadId, VehicleAndCoordinates)]()
 
     val segmentsQueue = mutable.Queue[RoadElem]()
@@ -153,6 +155,8 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
       }
     }
 
+    _currentTimeFrame = timeFrame
+
     //TODO read green light duration from config
     intersectionGreenLightsDirection =
       if (intersectionGreenLightsDirection == Horizontal) Vertical else Horizontal
@@ -180,13 +184,12 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
 
   // TODO: test
   /**
-    * @param currentTimeFrame last computed frame
     * @return true if next (currentTimeFrame + 1) frame can be simulated
     */
-  def isReadyForComputation(currentTimeFrame: Long): Boolean = {
+  def isReadyForComputation(): Boolean = {
     for (road <- horizontalRoads ++ verticalRoads) {
       road.elems.head match {
-        case firstRoadSeg: RoadSegment => if (currentTimeFrame - firstRoadSeg.lastIncomingTrafficTimeFrame > maxTimeFrameDelay) {
+        case firstRoadSeg: RoadSegment => if ((currentTimeFrame + 1) - firstRoadSeg.lastIncomingTrafficTimeFrame > maxTimeFrameDelay) {
           return false
         }
         case _ => throw new ClassCastException
@@ -196,15 +199,18 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
     true
   }
 
-  def putIncomingTraffic(msg: OutgoingTrafficInfo, currentTimeFrame: Long): Unit = {
+  def putIncomingTraffic(msg: OutgoingTrafficInfo) : Unit = {
     incomingTrafficQueue += msg
 
     while (incomingTrafficQueue.nonEmpty && incomingTrafficQueue.max.timeframe <= currentTimeFrame) {
-      val OutgoingTrafficInfo(roadId, timeFrame, outgoingTraffic) = incomingTrafficQueue.dequeue()
+      val trafficInfo@OutgoingTrafficInfo(roadId, timeFrame, outgoingTraffic) = incomingTrafficQueue.dequeue()
       val road = roadsMap(roadId)
       road.elems.head match {
-        case firstRoadSeg: RoadSegment => if (currentTimeFrame - firstRoadSeg.lastIncomingTrafficTimeFrame > maxTimeFrameDelay) {
+        case firstRoadSeg: RoadSegment if timeFrame == firstRoadSeg.lastIncomingTrafficTimeFrame + 1 =>
           firstRoadSeg.putTraffic(timeFrame, outgoingTraffic, intersectionGreenLightsDirection)
+        case _: RoadSegment => {
+          incomingTrafficQueue += trafficInfo
+          return
         }
         case _ => throw new ClassCastException
       }

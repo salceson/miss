@@ -1,6 +1,7 @@
 package miss.trafficsimulation.roads
 
 import com.typesafe.config.ConfigFactory
+import miss.trafficsimulation.actors.AreaActor.OutgoingTrafficInfo
 import miss.trafficsimulation.roads.RoadDirection._
 import org.specs2.mutable.Specification
 
@@ -25,16 +26,82 @@ class AreaSpecification extends Specification {
   }
 
   "Area" should {
-    "simulate some moves without incoming traffic data" in {
+    "simulate 2 time frames without incoming traffic data" in {
       val area = createTestArea
 
-      area.isReadyForComputation(1) must beTrue
-      area.simulate(1)
+      // tf 1
+      area.isReadyForComputation() must beTrue
+      area.simulate()
 
-      area.isReadyForComputation(2) must beTrue
-      area.simulate(2)
+      // tf 2
+      area.isReadyForComputation() must beTrue
+      area.simulate()
 
-      area.isReadyForComputation(3) must beFalse
+      // tf 3
+      area.isReadyForComputation() must beFalse
+    }
+  }
+
+  "Area" should {
+    "simulate more time frames after having received incoming traffic data" in {
+      val area = createTestArea
+      area.simulate() // tf 1
+      area.simulate() // tf 2
+      area.isReadyForComputation() must beFalse
+
+      area.putIncomingTraffic(OutgoingTrafficInfo(RoadId(1), 1, List()))
+      area.isReadyForComputation() must beFalse
+
+      area.putIncomingTraffic(OutgoingTrafficInfo(RoadId(2), 1, List()))
+      area.isReadyForComputation() must beFalse
+
+      area.putIncomingTraffic(OutgoingTrafficInfo(RoadId(3), 1, List()))
+      area.isReadyForComputation() must beFalse
+
+      area.putIncomingTraffic(OutgoingTrafficInfo(RoadId(4), 1, List()))
+      area.isReadyForComputation() must beTrue
+
+      area.simulate() // tf 3
+      area.isReadyForComputation() must beFalse
+    }
+  }
+
+  "Area" should {
+    "handle messages in mixed order" in {
+      val area = createTestArea
+      area.simulate() // tf 1
+      area.simulate() // tf 2
+      area.isReadyForComputation() must beFalse
+
+      area.putIncomingTraffic(OutgoingTrafficInfo(RoadId(1), 2, List()))
+      area.isReadyForComputation() must beFalse
+
+      area.putIncomingTraffic(OutgoingTrafficInfo(RoadId(2), 2, List()))
+      area.isReadyForComputation() must beFalse
+
+      area.putIncomingTraffic(OutgoingTrafficInfo(RoadId(3), 2, List()))
+      area.isReadyForComputation() must beFalse
+
+      area.putIncomingTraffic(OutgoingTrafficInfo(RoadId(4), 1, List()))
+      area.isReadyForComputation() must beFalse
+
+      area.putIncomingTraffic(OutgoingTrafficInfo(RoadId(1), 1, List()))
+      area.isReadyForComputation() must beFalse
+
+      area.putIncomingTraffic(OutgoingTrafficInfo(RoadId(2), 1, List()))
+      area.isReadyForComputation() must beFalse
+
+      area.putIncomingTraffic(OutgoingTrafficInfo(RoadId(3), 1, List()))
+      area.isReadyForComputation() must beTrue
+
+      area.simulate() // tf 3
+      area.isReadyForComputation() must beFalse
+
+      area.putIncomingTraffic(OutgoingTrafficInfo(RoadId(4), 2, List()))
+      area.isReadyForComputation() must beTrue
+
+      area.simulate() // tf 4
+      area.isReadyForComputation() must beFalse
     }
   }
 

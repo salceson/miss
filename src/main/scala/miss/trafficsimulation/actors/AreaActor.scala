@@ -20,23 +20,22 @@ class AreaActor extends FSM[State, Data] {
       val area = new Area(verticalRoadsDefs, horizontalRoadsDefs, config)
       Thread.sleep(5000) //TODO: Dirty magic
       self ! ReadyForComputation(0)
-      goto(Simulating) using AreaData(area, 0)
+      goto(Simulating) using AreaData(area)
   }
 
   when(Simulating) {
-    case Event(msg@OutgoingTrafficInfo(roadId, timeFrame, outgoingTraffic), d@AreaData(area, currentTimeFrame)) =>
+    case Event(msg@OutgoingTrafficInfo(roadId, timeFrame, outgoingTraffic), d@AreaData(area)) =>
       log.info(s"Got $msg")
-      area.putIncomingTraffic(msg, currentTimeFrame)
-      if (area.isReadyForComputation(currentTimeFrame)) {
-        self ! ReadyForComputation(currentTimeFrame)
+      area.putIncomingTraffic(msg)
+      if (area.isReadyForComputation()) {
+        self ! ReadyForComputation(area.currentTimeFrame)
       }
       stay
     case Event(msg@ReadyForComputation(timeFrame), AreaData(area, previousTimeFrame)) if previousTimeFrame == timeFrame =>
       log.info(s"Time frame: $timeFrame")
       log.info(s"Got $msg")
-      val currentTimeFrame = previousTimeFrame + 1
       log.info(s"Simulating timeFrame $currentTimeFrame...")
-      val outgoingTraffic = area.simulate(currentTimeFrame)
+      val outgoingTraffic = area.simulate()
       log.info(s"Messages to send: $outgoingTraffic")
       val messagesSent = mutable.Map(area.actorsAndRoadIds.map({
         case (a: ActorRef, r: RoadId) => (a, r) -> false
@@ -47,24 +46,24 @@ class AreaActor extends FSM[State, Data] {
         case ((actorRef, roadId), list) =>
           log.info(s"Sending to $actorRef; roadId: $roadId; traffic: $list")
           messagesSent((actorRef, roadId)) = true
-          actorRef ! OutgoingTrafficInfo(roadId, currentTimeFrame, list map {
+          actorRef ! OutgoingTrafficInfo(roadId, area.currentTimeFrame, list map {
             case (_, _, vac) => vac
           })
       }
       messagesSent foreach {
         case ((actorRef, roadId), false) =>
           log.info(s"Sending to $actorRef; roadId: $roadId; traffic: No traffic")
-          actorRef ! OutgoingTrafficInfo(roadId, currentTimeFrame, List())
+          actorRef ! OutgoingTrafficInfo(roadId, area.currentTimeFrame, List())
         case _ =>
       }
       log.info("WTF")
-      if (area.isReadyForComputation(currentTimeFrame)) {
+      if (area.isReadyForComputation()) {
         log.info("READY")
-        self ! ReadyForComputation(currentTimeFrame)
+        self ! ReadyForComputation(area.currentTimeFrame)
       }
       log.info("NOPE")
       //TODO: Handle this here
-      goto(Simulating) using AreaData(area, currentTimeFrame)
+      goto(Simulating) using AreaData(area)
   }
 }
 
@@ -104,10 +103,8 @@ object AreaActor {
   case object EmptyData extends Data
 
   /**
-    *
     * @param area
-    * @param timeFrame last simulated time frame
     */
-  case class AreaData(area: Area, timeFrame: Long) extends Data
+  case class AreaData(area: Area) extends Data
 
 }
