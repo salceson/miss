@@ -24,6 +24,8 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
   private val maxVelocity = vehicleConfig.getInt("max_velocity")
   private val maxAcceleration = vehicleConfig.getInt("max_acceleration")
 
+  private val maxTimeFrameDelay = roadSegmentsLength / maxVelocity
+
   private val intersections = ofDim[Intersection](verticalRoadsDefs.size, horizontalRoadsDefs.size)
 
   for (x <- verticalRoadsDefs.indices; y <- horizontalRoadsDefs.indices) {
@@ -104,7 +106,11 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
     new Road(roadDef.roadId, roadDef.direction, roadElems.toList)
   }
 
-  def simulate(): List[(ActorRef, RoadId, VehicleAndCoordinates)] = {
+  /**
+    * @param timeFrame number of time frame to simulate
+    * @return
+    */
+  def simulate(timeFrame: Long): List[(ActorRef, RoadId, VehicleAndCoordinates)] = {
     val vehiclesAndCoordinatesOutOfArea = ListBuffer[(ActorRef, RoadId, VehicleAndCoordinates)]()
 
     val segmentsQueue = mutable.Queue[RoadElem]()
@@ -127,7 +133,7 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
     while (segmentsQueue.nonEmpty) {
       val segment = segmentsQueue.dequeue().asInstanceOf[RoadSegment]
       if (canCalculate(segment, segmentsDone)) {
-        vehiclesAndCoordinatesOutOfArea ++= segment.simulate(intersectionGreenLightsDirection)
+        vehiclesAndCoordinatesOutOfArea ++= segment.simulate(intersectionGreenLightsDirection, timeFrame)
         segmentsDone(segment) = true
       } else {
         segmentsQueue.enqueue(segment)
@@ -158,12 +164,29 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
     }
   }
 
-  // TODO: Implement below
+  // TODO: test
+  /**
+    * @param currentTimeFrame last computed frame
+    * @return true if next (currentTimeFrame + 1) frame can be simulated
+    */
   def isReadyForComputation(currentTimeFrame: Long): Boolean = {
-    ???
+    for (road <- horizontalRoads ++ verticalRoads) {
+      road.elems.head match {
+        case firstRoadSeg: RoadSegment => if (currentTimeFrame - firstRoadSeg.lastIncomingTrafficTimeFrame > maxTimeFrameDelay) {
+          return false
+        }
+        case _ => throw new ClassCastException
+      }
+    }
+
+    true
   }
 
   def putIncomingTraffic(roadId: RoadId, timeFrame: Long, traffic: List[VehicleAndCoordinates]): Unit = {
+    // TODO 1. insert into priority queue (by min timeFrame).
+    // 2. pop incoming traffic info from priority queue (only those with time less or equal to currentTimeFrame),
+    // insert incoming vehicles to road segs and simulate their moves for all frames up to current
+    // (if current is 3, and incoming data is for 1, then run simulation for frames 2 and 3 (frame 1 was just for insertion))
     ???
   }
 

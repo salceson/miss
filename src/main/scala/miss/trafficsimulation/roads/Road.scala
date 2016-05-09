@@ -65,6 +65,8 @@ class RoadSegment(val roadId: RoadId,
                   val maxAcceleration: Int) extends RoadElem {
 
   val lanes: List[Lane] = List.fill(lanesCount)(new Lane(laneLength))
+  var currentTimeFrame = 0 : Long //last computed time frame
+  var lastIncomingTrafficTimeFrame = 0 : Long
 
   /**
     * Iterates through cars - but only at the specified timeFrame.
@@ -238,10 +240,10 @@ class RoadSegment(val roadId: RoadId,
     Math.min(maxPossible, maxVelocity)
   }
 
-  def simulate(lightsDirection: LightsDirection): List[(ActorRef, RoadId, VehicleAndCoordinates)] = {
+  def simulate(lightsDirection: LightsDirection, timeFrame: Long): List[(ActorRef, RoadId, VehicleAndCoordinates)] = {
     val vehiclesAndCoordinatesOutOfArea = ListBuffer[(ActorRef, RoadId, VehicleAndCoordinates)]()
 
-    for (vac <- vehicleIterator()) {
+    for (vac <- vehicleIterator(timeFrame)) {
       val move = vac.vehicle.move(calculatePossibleMoves(vac, lightsDirection))
       val oldLaneIdx = vac.laneIdx
       val oldCellIdx = vac.cellIdx
@@ -274,6 +276,10 @@ class RoadSegment(val roadId: RoadId,
       } else {
         lanes(newLaneIdx).cells(newCellIdx).vehicle = Some(vac.vehicle)
       }
+    }
+
+    if (timeFrame > currentTimeFrame) {
+      currentTimeFrame = timeFrame
     }
 
     vehiclesAndCoordinatesOutOfArea.toList
