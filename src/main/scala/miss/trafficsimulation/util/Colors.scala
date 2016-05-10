@@ -2,13 +2,9 @@ package miss.trafficsimulation.util
 
 import scala.language.implicitConversions
 
-class Color(val r: Int, val g: Int, val b: Int)
+case class Color(r: Int, g: Int, b: Int) extends Serializable
 
 object Color {
-  def apply(r: Int, g: Int, b: Int): Color = new Color(r, g, b)
-
-  def unapply(c: Color): Option[(Int, Int, Int)] = Some((c.r, c.g, c.b))
-
   implicit def toColor(color: Color): swing.Color = {
     new swing.Color(color.r, color.g, color.b)
   }
@@ -19,18 +15,13 @@ object Color {
   }
 }
 
-case object Red extends Color(255, 0, 0)
-
-case object Green extends Color(0, 255, 0)
-
-case object Blue extends Color(0, 0, 255)
-
-case object Cyan extends Color(0, 255, 255)
-
-case object Magenta extends Color(255, 0, 255)
-
-case object Yellow extends Color(255, 255, 0)
-
-case object White extends Color(255, 255, 255)
-
-case object Black extends Color(0, 0, 0)
+object CommonColors {
+  val Red = Color(255, 0, 0)
+  val Green = Color(0, 255, 0)
+  val Blue = Color(0, 0, 255)
+  val Cyan = Color(0, 255, 255)
+  val Magenta = Color(255, 0, 255)
+  val Yellow = Color(255, 255, 0)
+  val White = Color(255, 255, 255)
+  val Black = Color(0, 0, 0)
+}

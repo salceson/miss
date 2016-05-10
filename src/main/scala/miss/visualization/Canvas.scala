@@ -4,8 +4,9 @@ import com.typesafe.config.ConfigFactory
 import miss.trafficsimulation.roads.LightsDirection.LightsDirection
 import miss.trafficsimulation.roads.{Road, RoadDirection, RoadSegment}
 import miss.trafficsimulation.traffic.VehicleId
+import miss.trafficsimulation.util.Color
 import miss.trafficsimulation.util.Color._
-import miss.trafficsimulation.util._
+import miss.trafficsimulation.util.CommonColors._
 
 import scala.collection.mutable
 import scala.swing.{Component, Dimension, Graphics2D, Point}
@@ -57,9 +58,9 @@ class Canvas extends Component {
   }
 
   private def drawTraffic(g: Graphics2D): Unit = {
-    for ( vizVehicle <- currentPositions.values ) {
+    for (vizVehicle <- currentPositions.values) {
       val currentPos = new Point(vizVehicle.x, vizVehicle.y)
-      if(prevPositions.contains(vizVehicle.vehicleId)) {
+      if (prevPositions.contains(vizVehicle.vehicleId)) {
         val prevVizVehicle = prevPositions(vizVehicle.vehicleId)
         val prevPos = new Point(prevVizVehicle.x, prevVizVehicle.y)
 

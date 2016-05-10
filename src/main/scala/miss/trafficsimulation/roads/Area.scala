@@ -6,7 +6,7 @@ import miss.trafficsimulation.actors.AreaActor.OutgoingTrafficInfo
 import miss.trafficsimulation.roads.LightsDirection.{Horizontal, LightsDirection, Vertical}
 import miss.trafficsimulation.roads.RoadDirection.{NS, RoadDirection, SN}
 import miss.trafficsimulation.traffic.{Car, VehicleId}
-import miss.trafficsimulation.util.White
+import miss.trafficsimulation.util.CommonColors.White
 
 import scala.Array.ofDim
 import scala.collection.mutable

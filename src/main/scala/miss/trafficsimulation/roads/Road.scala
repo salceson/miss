@@ -8,7 +8,7 @@ import miss.trafficsimulation.traffic.{Car, Move, Vehicle, VehicleId}
 
 import scala.collection.mutable.ListBuffer
 
-class Road(val id: RoadId, val direction: RoadDirection, val elems: List[RoadElem])
+case class Road(id: RoadId, direction: RoadDirection, elems: List[RoadElem])
 
 case class RoadId(id: Int)
 
@@ -16,7 +16,7 @@ sealed trait RoadElem
 
 case class NextAreaRoadSegment(roadId: RoadId, actor: ActorRef) extends RoadElem
 
-class Intersection extends RoadElem {
+class Intersection extends RoadElem with Serializable {
   var horizontalRoadIn: RoadSegment = null
   var horizontalRoadOut: RoadSegment = null
   var verticalRoadIn: RoadSegment = null
@@ -62,7 +62,7 @@ class RoadSegment(val roadId: RoadId,
                   val out: RoadElem,
                   val roadDirection: RoadDirection,
                   val maxVelocity: Int,
-                  val maxAcceleration: Int) extends RoadElem {
+                  val maxAcceleration: Int) extends RoadElem with Serializable {
 
   val lanes: List[Lane] = List.fill(lanesCount)(new Lane(laneLength))
   var currentTimeFrame = 0 : Long //last computed time frame
@@ -326,11 +326,11 @@ class RoadSegment(val roadId: RoadId,
   }
 }
 
-class Lane(val length: Int) {
+class Lane(val length: Int) extends Serializable {
   val cells: List[RoadCell] = List.fill(length)(new RoadCell)
 }
 
-class RoadCell {
+class RoadCell extends Serializable {
   var vehicle: Option[Vehicle] = None
 }
 

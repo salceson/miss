@@ -2,7 +2,7 @@ package miss.visualization
 
 import miss.trafficsimulation.roads._
 import miss.trafficsimulation.traffic.{Car, VehicleId}
-import miss.trafficsimulation.util._
+import miss.trafficsimulation.util.CommonColors._
 import miss.visualization.VisualizationActor.TrafficState
 
 import scala.concurrent.duration._

@@ -4,7 +4,7 @@ import miss.trafficsimulation.roads.LightsDirection.{Horizontal, Vertical}
 import miss.trafficsimulation.roads.RoadDirection.{EW, NS}
 import miss.trafficsimulation.traffic.MoveDirection.{GoStraight, SwitchLaneLeft, SwitchLaneRight, Turn}
 import miss.trafficsimulation.traffic.{Car, Move, VehicleId}
-import miss.trafficsimulation.util._
+import miss.trafficsimulation.util.CommonColors._
 import org.specs2.mutable.Specification
 
 //TODO: Make moves from middle field

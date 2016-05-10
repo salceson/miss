@@ -25,11 +25,14 @@ class AreaActor extends FSM[State, Data] {
   }
 
   when(Simulating) {
-    case Event(msg@OutgoingTrafficInfo(roadId, timeFrame, outgoingTraffic), d@AreaData(area, _)) =>
+    case Event(msg@OutgoingTrafficInfo(roadId, timeFrame, outgoingTraffic), d@AreaData(area, visualizer)) =>
       log.info(s"Got $msg")
       area.putIncomingTraffic(msg)
       if (area.isReadyForComputation()) {
-        self ! ReadyForComputation(area.currentTimeFrame)
+        if (visualizer.isDefined) {
+          Thread.sleep(1000)
+          self ! ReadyForComputation(area.currentTimeFrame)
+        }
       }
       stay
     case Event(msg@ReadyForComputation(timeFrame), data@AreaData(area, visualizer)) if area.currentTimeFrame == timeFrame =>
