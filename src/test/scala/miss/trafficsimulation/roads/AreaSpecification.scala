@@ -23,9 +23,7 @@ class AreaSpecification extends Specification {
       area.verticalRoads must have length 4
       area.horizontalRoads must have length 4
     }
-  }
 
-  "Area" should {
     "simulate 2 time frames without incoming traffic data" in {
       val area = createTestArea
 
@@ -40,9 +38,7 @@ class AreaSpecification extends Specification {
       // tf 3
       area.isReadyForComputation() must beFalse
     }
-  }
 
-  "Area" should {
     "simulate more time frames after having received incoming traffic data" in {
       val area = createTestArea
       area.simulate() // tf 1
@@ -64,9 +60,7 @@ class AreaSpecification extends Specification {
       area.simulate() // tf 3
       area.isReadyForComputation() must beFalse
     }
-  }
 
-  "Area" should {
     "handle messages in mixed order" in {
       val area = createTestArea
       area.simulate() // tf 1

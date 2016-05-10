@@ -1,9 +1,10 @@
 package miss.trafficsimulation.actors
 
-import akka.actor.{ActorRef, FSM, UnhandledMessage}
+import akka.actor.{ActorRef, FSM}
 import com.typesafe.config.ConfigFactory
 import miss.trafficsimulation.actors.AreaActor.{Data, State}
 import miss.trafficsimulation.roads.{Area, AreaRoadDefinition, RoadId, VehicleAndCoordinates}
+import miss.visualization.VisualizationActor.TrafficState
 
 import scala.collection.mutable
 
@@ -20,18 +21,18 @@ class AreaActor extends FSM[State, Data] {
       val area = new Area(verticalRoadsDefs, horizontalRoadsDefs, config)
       Thread.sleep(5000) //TODO: Dirty magic
       self ! ReadyForComputation(0)
-      goto(Simulating) using AreaData(area)
+      goto(Simulating) using AreaData(area, None)
   }
 
   when(Simulating) {
-    case Event(msg@OutgoingTrafficInfo(roadId, timeFrame, outgoingTraffic), d@AreaData(area)) =>
+    case Event(msg@OutgoingTrafficInfo(roadId, timeFrame, outgoingTraffic), d@AreaData(area, _)) =>
       log.info(s"Got $msg")
       area.putIncomingTraffic(msg)
       if (area.isReadyForComputation()) {
         self ! ReadyForComputation(area.currentTimeFrame)
       }
       stay
-    case Event(msg@ReadyForComputation(timeFrame), AreaData(area)) if area.currentTimeFrame == timeFrame =>
+    case Event(msg@ReadyForComputation(timeFrame), data@AreaData(area, visualizer)) if area.currentTimeFrame == timeFrame =>
       log.info(s"Time frame: $timeFrame")
       log.info(s"Got $msg")
       log.info(s"Simulating timeFrame ${area.currentTimeFrame}...")
@@ -62,8 +63,17 @@ class AreaActor extends FSM[State, Data] {
         self ! ReadyForComputation(area.currentTimeFrame)
       }
       log.info("NOPE")
-      //TODO: Handle this here
-      goto(Simulating) using AreaData(area)
+      if (visualizer.isDefined) {
+        visualizer.get ! TrafficState(area.horizontalRoads.view.toList,
+          area.verticalRoads.view.toList,
+          area.intersectionGreenLightsDirection)
+        Thread.sleep(1000)
+      }
+      goto(Simulating) using data
+    case Event(VisualizationStartRequest(visualizer), AreaData(area, _)) =>
+      goto(Simulating) using AreaData(area, Some(visualizer))
+    case Event(VisualizationStopRequest(_), AreaData(area, _)) =>
+      goto(Simulating) using AreaData(area, None)
   }
 }
 
@@ -105,6 +115,6 @@ object AreaActor {
   /**
     * @param area
     */
-  case class AreaData(area: Area) extends Data
+  case class AreaData(area: Area, visualizer: Option[ActorRef]) extends Data
 
 }

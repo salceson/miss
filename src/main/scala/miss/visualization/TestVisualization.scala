@@ -34,12 +34,12 @@ trait TestRoads {
   val h1road = new Road(RoadId(2), RoadDirection.WE, List(h10seg, intersection2, h11seg, intersection3, h12seg))
   val v0road = new Road(RoadId(3), RoadDirection.NS, List(v00seg, intersection1, v01seg, intersection2, v02seg))
   val v1road = new Road(RoadId(4), RoadDirection.SN, List(v10seg, intersection3, v11seg, intersection4, v12seg))
-  
+
   val hRoads = List(h0road, h1road)
   val vRoads = List(v0road, v1road)
 }
 
-object TestVisualization extends Visualization{
+object TestVisualization extends Visualization {
   val trafficState1 = {
     val testRoads = new TestRoads {
       h00seg.lanes(1).cells(1).vehicle = Some(Car(VehicleId("1"), 2, 1, Yellow, 0))
@@ -47,7 +47,7 @@ object TestVisualization extends Visualization{
       h10seg.lanes(2).cells(4).vehicle = Some(Car(VehicleId("3"), 2, 1, Red, 0))
       h00seg.lanes(2).cells(4).vehicle = Some(Car(VehicleId("4"), 2, 1, Blue, 0))
     }
-    
+
     TrafficState(testRoads.hRoads, testRoads.vRoads, LightsDirection.Horizontal)
   }
 

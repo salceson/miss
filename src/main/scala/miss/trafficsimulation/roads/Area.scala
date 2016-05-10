@@ -5,10 +5,13 @@ import com.typesafe.config.Config
 import miss.trafficsimulation.actors.AreaActor.OutgoingTrafficInfo
 import miss.trafficsimulation.roads.LightsDirection.{Horizontal, LightsDirection, Vertical}
 import miss.trafficsimulation.roads.RoadDirection.{NS, RoadDirection, SN}
+import miss.trafficsimulation.traffic.{Car, VehicleId}
+import miss.trafficsimulation.util.White
 
 import scala.Array.ofDim
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
+import scala.util.Random
 
 case class AreaRoadDefinition(roadId: RoadId, direction: RoadDirection, outgoingActorRef: ActorRef)
 
@@ -34,10 +37,10 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
   }
   private val transposedIntersections = intersections.transpose
 
-  private[roads] val horizontalRoads = horizontalRoadsDefs.indices.map(
+  val horizontalRoads = horizontalRoadsDefs.indices.map(
     (y: Int) => createRoad(horizontalRoadsDefs(y), intersections(y).toList)
   )
-  private[roads] val verticalRoads = verticalRoadsDefs.indices.map(
+  val verticalRoads = verticalRoadsDefs.indices.map(
     (x: Int) => createRoad(verticalRoadsDefs(x), transposedIntersections(x).toList)
   )
 
@@ -52,7 +55,7 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
 
   private val incomingTrafficQueue = mutable.PriorityQueue[OutgoingTrafficInfo]()
 
-  private var intersectionGreenLightsDirection: LightsDirection = Horizontal
+  var intersectionGreenLightsDirection: LightsDirection = Horizontal
 
   private var _currentTimeFrame = 0 : Long
 
@@ -80,6 +83,15 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
     val firstSegment = new RoadSegment(roadDef.roadId, lanesNum,
       (roadSegmentsLength * 0.5).toInt, None, firstIntersection, roadDef.direction,
       maxVelocity, maxAcceleration)
+
+    firstSegment.lanes(0).cells(0).vehicle = Some(Car(
+      id = VehicleId(Random.nextString(20)),
+      maxVelocity = maxVelocity,
+      maxAcceleration = maxAcceleration,
+      color = White,
+      timeFrame = 0
+    ))
+
     if (horizontal) {
       firstIntersection.horizontalRoadIn = firstSegment
     } else {
