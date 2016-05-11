@@ -245,7 +245,7 @@ class RoadSegment(val roadId: RoadId,
   def simulate(lightsDirection: LightsDirection, timeFrame: Long): List[(ActorRef, RoadId, VehicleAndCoordinates)] = {
     val vehiclesAndCoordinatesOutOfArea = ListBuffer[(ActorRef, RoadId, VehicleAndCoordinates)]()
 
-    for (vac <- vehicleIterator(timeFrame)) {
+    for (vac <- vehicleIterator(timeFrame - 1)) {
       val move = vac.vehicle.move(calculatePossibleMoves(vac, lightsDirection))
       val oldLaneIdx = vac.laneIdx
       val oldCellIdx = vac.cellIdx
@@ -297,7 +297,7 @@ class RoadSegment(val roadId: RoadId,
 
   def availableCells(laneIdx: Int, limit: Int): Int = {
     val cells = lanes(laneIdx).cells
-    for (i <- 0 to limit) {
+    for (i <- 1 to limit) {
       if(cells(i).vehicle.isDefined)
         return i - 1
     }

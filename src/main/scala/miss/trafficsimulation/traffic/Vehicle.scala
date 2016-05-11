@@ -49,6 +49,8 @@ case class Car(id: VehicleId,
       currentVelocity = maximumPossibleVelocityInFrame
     }
 
+    timeFrame += 1
+
     selectedMove.copy(cellsCount = currentVelocity)
   }
 }
