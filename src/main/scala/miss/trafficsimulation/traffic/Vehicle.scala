@@ -6,7 +6,17 @@ import scala.util.Random
 
 case class Situation()
 
-case class VehicleId(id: String)
+case class VehicleId(id: Long)
+
+object VehicleIdGenerator {
+  private var _idSequence = 0: Long
+
+  def nextId: VehicleId = {
+    val nextId = _idSequence
+    _idSequence += 1
+    VehicleId(nextId)
+  }
+}
 
 trait Vehicle {
   def id: VehicleId
@@ -34,6 +44,7 @@ case class Car(id: VehicleId,
                var currentVelocity: Int = 0,
                var currentAcceleration: Int = 0)
   extends Vehicle {
+
   override def move(possibleMoves: List[Move]): Move = {
     currentAcceleration = Math.min(currentAcceleration + 1, maxAcceleration)
 

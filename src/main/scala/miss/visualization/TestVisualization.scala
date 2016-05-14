@@ -42,10 +42,10 @@ trait TestRoads {
 object TestVisualization extends Visualization {
   val trafficState1 = {
     val testRoads = new TestRoads {
-      h00seg.lanes(1).cells(1).vehicle = Some(Car(VehicleId("1"), 2, 1, Yellow, 0))
-      v00seg.lanes(2).cells(0).vehicle = Some(Car(VehicleId("2"), 2, 1, Green, 0))
-      h10seg.lanes(2).cells(4).vehicle = Some(Car(VehicleId("3"), 2, 1, Red, 0))
-      h00seg.lanes(2).cells(4).vehicle = Some(Car(VehicleId("4"), 2, 1, Blue, 0))
+      h00seg.lanes(1).cells(1).vehicle = Some(Car(VehicleId(1), 2, 1, Yellow, 0))
+      v00seg.lanes(2).cells(0).vehicle = Some(Car(VehicleId(2), 2, 1, Green, 0))
+      h10seg.lanes(2).cells(4).vehicle = Some(Car(VehicleId(3), 2, 1, Red, 0))
+      h00seg.lanes(2).cells(4).vehicle = Some(Car(VehicleId(4), 2, 1, Blue, 0))
     }
 
     TrafficState(testRoads.hRoads, testRoads.vRoads, LightsDirection.Horizontal)
@@ -53,11 +53,11 @@ object TestVisualization extends Visualization {
 
   val trafficState2 = {
     val testRoads = new TestRoads {
-      h01seg.lanes(1).cells(0).vehicle = Some(Car(VehicleId("1"), 2, 1, Yellow, 0))
-      v00seg.lanes(2).cells(3).vehicle = Some(Car(VehicleId("2"), 2, 1, Green, 0))
-      h11seg.lanes(2).cells(0).vehicle = Some(Car(VehicleId("3"), 2, 1, Red, 0))
-      h01seg.lanes(2).cells(2).vehicle = Some(Car(VehicleId("4"), 2, 1, Blue, 0))
-      h00seg.lanes(0).cells(1).vehicle = Some(Car(VehicleId("5"), 2, 1, Magenta, 0))
+      h01seg.lanes(1).cells(0).vehicle = Some(Car(VehicleId(1), 2, 1, Yellow, 0))
+      v00seg.lanes(2).cells(3).vehicle = Some(Car(VehicleId(2), 2, 1, Green, 0))
+      h11seg.lanes(2).cells(0).vehicle = Some(Car(VehicleId(3), 2, 1, Red, 0))
+      h01seg.lanes(2).cells(2).vehicle = Some(Car(VehicleId(4), 2, 1, Blue, 0))
+      h00seg.lanes(0).cells(1).vehicle = Some(Car(VehicleId(5), 2, 1, Magenta, 0))
     }
 
     TrafficState(testRoads.hRoads, testRoads.vRoads, LightsDirection.Horizontal)
@@ -65,11 +65,11 @@ object TestVisualization extends Visualization {
 
   val trafficState3 = {
     val testRoads = new TestRoads {
-      h01seg.lanes(0).cells(4).vehicle = Some(Car(VehicleId("1"), 2, 1, Yellow, 0))
-      v00seg.lanes(2).cells(4).vehicle = Some(Car(VehicleId("2"), 2, 1, Green, 0))
-      h11seg.lanes(1).cells(4).vehicle = Some(Car(VehicleId("3"), 2, 1, Red, 0))
-      h01seg.lanes(1).cells(6).vehicle = Some(Car(VehicleId("4"), 2, 1, Blue, 0))
-      h00seg.lanes(1).cells(3).vehicle = Some(Car(VehicleId("5"), 2, 1, Magenta, 0))
+      h01seg.lanes(0).cells(4).vehicle = Some(Car(VehicleId(1), 2, 1, Yellow, 0))
+      v00seg.lanes(2).cells(4).vehicle = Some(Car(VehicleId(2), 2, 1, Green, 0))
+      h11seg.lanes(1).cells(4).vehicle = Some(Car(VehicleId(3), 2, 1, Red, 0))
+      h01seg.lanes(1).cells(6).vehicle = Some(Car(VehicleId(4), 2, 1, Blue, 0))
+      h00seg.lanes(1).cells(3).vehicle = Some(Car(VehicleId(5), 2, 1, Magenta, 0))
     }
 
     TrafficState(testRoads.hRoads, testRoads.vRoads, LightsDirection.Horizontal)
@@ -77,11 +77,11 @@ object TestVisualization extends Visualization {
 
   val trafficState4 = {
     val testRoads = new TestRoads {
-      h01seg.lanes(0).cells(8).vehicle = Some(Car(VehicleId("1"), 2, 1, Yellow, 0))
-      v00seg.lanes(2).cells(4).vehicle = Some(Car(VehicleId("2"), 2, 1, Green, 0))
-      h11seg.lanes(1).cells(8).vehicle = Some(Car(VehicleId("3"), 2, 1, Red, 0))
-      h01seg.lanes(1).cells(8).vehicle = Some(Car(VehicleId("4"), 2, 1, Blue, 0))
-      h01seg.lanes(1).cells(1).vehicle = Some(Car(VehicleId("5"), 2, 1, Magenta, 0))
+      h01seg.lanes(0).cells(8).vehicle = Some(Car(VehicleId(1), 2, 1, Yellow, 0))
+      v00seg.lanes(2).cells(4).vehicle = Some(Car(VehicleId(2), 2, 1, Green, 0))
+      h11seg.lanes(1).cells(8).vehicle = Some(Car(VehicleId(3), 2, 1, Red, 0))
+      h01seg.lanes(1).cells(8).vehicle = Some(Car(VehicleId(4), 2, 1, Blue, 0))
+      h01seg.lanes(1).cells(1).vehicle = Some(Car(VehicleId(5), 2, 1, Magenta, 0))
     }
 
     TrafficState(testRoads.hRoads, testRoads.vRoads, LightsDirection.Horizontal)
@@ -89,11 +89,11 @@ object TestVisualization extends Visualization {
 
   val trafficState5 = {
     val testRoads = new TestRoads {
-      v01seg.lanes(0).cells(2).vehicle = Some(Car(VehicleId("1"), 2, 1, Yellow, 0))
-      v00seg.lanes(2).cells(4).vehicle = Some(Car(VehicleId("2"), 2, 1, Green, 0))
-      h12seg.lanes(1).cells(2).vehicle = Some(Car(VehicleId("3"), 2, 1, Red, 0))
-      h02seg.lanes(1).cells(1).vehicle = Some(Car(VehicleId("4"), 2, 1, Blue, 0))
-      h01seg.lanes(2).cells(5).vehicle = Some(Car(VehicleId("5"), 2, 1, Magenta, 0))
+      v01seg.lanes(0).cells(2).vehicle = Some(Car(VehicleId(1), 2, 1, Yellow, 0))
+      v00seg.lanes(2).cells(4).vehicle = Some(Car(VehicleId(2), 2, 1, Green, 0))
+      h12seg.lanes(1).cells(2).vehicle = Some(Car(VehicleId(3), 2, 1, Red, 0))
+      h02seg.lanes(1).cells(1).vehicle = Some(Car(VehicleId(4), 2, 1, Blue, 0))
+      h01seg.lanes(2).cells(5).vehicle = Some(Car(VehicleId(5), 2, 1, Magenta, 0))
     }
 
     TrafficState(testRoads.hRoads, testRoads.vRoads, LightsDirection.Horizontal)
@@ -101,11 +101,11 @@ object TestVisualization extends Visualization {
 
   val trafficState6 = {
     val testRoads = new TestRoads {
-      v01seg.lanes(0).cells(6).vehicle = Some(Car(VehicleId("1"), 2, 1, Yellow, 0))
-      v01seg.lanes(2).cells(2).vehicle = Some(Car(VehicleId("2"), 2, 1, Green, 0))
-      h12seg.lanes(2).cells(4).vehicle = Some(Car(VehicleId("3"), 2, 1, Red, 0))
-      h02seg.lanes(1).cells(4).vehicle = Some(Car(VehicleId("4"), 2, 1, Blue, 0))
-      h01seg.lanes(2).cells(9).vehicle = Some(Car(VehicleId("5"), 2, 1, Magenta, 0))
+      v01seg.lanes(0).cells(6).vehicle = Some(Car(VehicleId(1), 2, 1, Yellow, 0))
+      v01seg.lanes(2).cells(2).vehicle = Some(Car(VehicleId(2), 2, 1, Green, 0))
+      h12seg.lanes(2).cells(4).vehicle = Some(Car(VehicleId(3), 2, 1, Red, 0))
+      h02seg.lanes(1).cells(4).vehicle = Some(Car(VehicleId(4), 2, 1, Blue, 0))
+      h01seg.lanes(2).cells(9).vehicle = Some(Car(VehicleId(5), 2, 1, Magenta, 0))
     }
 
     TrafficState(testRoads.hRoads, testRoads.vRoads, LightsDirection.Horizontal)
@@ -113,9 +113,9 @@ object TestVisualization extends Visualization {
 
   val trafficState7 = {
     val testRoads = new TestRoads {
-      h11seg.lanes(2).cells(0).vehicle = Some(Car(VehicleId("1"), 2, 1, Yellow, 0))
-      v01seg.lanes(1).cells(6).vehicle = Some(Car(VehicleId("2"), 2, 1, Green, 0))
-      h01seg.lanes(2).cells(9).vehicle = Some(Car(VehicleId("5"), 2, 1, Magenta, 0))
+      h11seg.lanes(2).cells(0).vehicle = Some(Car(VehicleId(1), 2, 1, Yellow, 0))
+      v01seg.lanes(1).cells(6).vehicle = Some(Car(VehicleId(2), 2, 1, Green, 0))
+      h01seg.lanes(2).cells(9).vehicle = Some(Car(VehicleId(5), 2, 1, Magenta, 0))
     }
 
     TrafficState(testRoads.hRoads, testRoads.vRoads, LightsDirection.Horizontal)
@@ -123,9 +123,9 @@ object TestVisualization extends Visualization {
 
   val trafficState8 = {
     val testRoads = new TestRoads {
-      h11seg.lanes(1).cells(4).vehicle = Some(Car(VehicleId("1"), 2, 1, Yellow, 0))
-      v02seg.lanes(1).cells(1).vehicle = Some(Car(VehicleId("2"), 2, 1, Green, 0))
-      h01seg.lanes(2).cells(9).vehicle = Some(Car(VehicleId("5"), 2, 1, Magenta, 0))
+      h11seg.lanes(1).cells(4).vehicle = Some(Car(VehicleId(1), 2, 1, Yellow, 0))
+      v02seg.lanes(1).cells(1).vehicle = Some(Car(VehicleId(2), 2, 1, Green, 0))
+      h01seg.lanes(2).cells(9).vehicle = Some(Car(VehicleId(5), 2, 1, Magenta, 0))
     }
 
     TrafficState(testRoads.hRoads, testRoads.vRoads, LightsDirection.Horizontal)
@@ -133,9 +133,9 @@ object TestVisualization extends Visualization {
 
   val trafficState9 = {
     val testRoads = new TestRoads {
-      h11seg.lanes(1).cells(9).vehicle = Some(Car(VehicleId("1"), 2, 1, Yellow, 0))
-      v02seg.lanes(0).cells(4).vehicle = Some(Car(VehicleId("2"), 2, 1, Green, 0))
-      h02seg.lanes(2).cells(2).vehicle = Some(Car(VehicleId("5"), 2, 1, Magenta, 0))
+      h11seg.lanes(1).cells(9).vehicle = Some(Car(VehicleId(1), 2, 1, Yellow, 0))
+      v02seg.lanes(0).cells(4).vehicle = Some(Car(VehicleId(2), 2, 1, Green, 0))
+      h02seg.lanes(2).cells(2).vehicle = Some(Car(VehicleId(5), 2, 1, Magenta, 0))
     }
 
     TrafficState(testRoads.hRoads, testRoads.vRoads, LightsDirection.Horizontal)
@@ -143,7 +143,7 @@ object TestVisualization extends Visualization {
 
   val trafficState10 = {
     val testRoads = new TestRoads {
-      h12seg.lanes(1).cells(3).vehicle = Some(Car(VehicleId("1"), 2, 1, Yellow, 0))
+      h12seg.lanes(1).cells(3).vehicle = Some(Car(VehicleId(1), 2, 1, Yellow, 0))
     }
 
     TrafficState(testRoads.hRoads, testRoads.vRoads, LightsDirection.Horizontal)

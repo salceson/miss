@@ -5,13 +5,12 @@ import com.typesafe.config.Config
 import miss.trafficsimulation.actors.AreaActor.OutgoingTrafficInfo
 import miss.trafficsimulation.roads.LightsDirection.{Horizontal, LightsDirection, Vertical}
 import miss.trafficsimulation.roads.RoadDirection.{NS, RoadDirection, SN}
-import miss.trafficsimulation.traffic.{Car, VehicleId}
-import miss.trafficsimulation.util.CommonColors.White
+import miss.trafficsimulation.traffic.{Car, VehicleIdGenerator}
+import miss.trafficsimulation.util.Color
 
 import scala.Array.ofDim
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
-import scala.util.Random
 
 case class AreaRoadDefinition(roadId: RoadId, direction: RoadDirection, outgoingActorRef: ActorRef)
 
@@ -57,9 +56,9 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
 
   var intersectionGreenLightsDirection: LightsDirection = Horizontal
 
-  private var _currentTimeFrame = 0 : Long
+  private var _currentTimeFrame = 0: Long
 
-  def currentTimeFrame : Long = _currentTimeFrame
+  def currentTimeFrame: Long = _currentTimeFrame
 
   /**
     * Creates road for given definition and list of intersections.
@@ -85,10 +84,10 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
       maxVelocity, maxAcceleration)
 
     firstSegment.lanes(0).cells(0).vehicle = Some(Car(
-      id = VehicleId(Random.nextString(20)),
+      id = VehicleIdGenerator.nextId,
       maxVelocity = maxVelocity,
       maxAcceleration = maxAcceleration,
-      color = White,
+      color = Color.random,
       timeFrame = 0
     ))
 
@@ -211,7 +210,7 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
     true
   }
 
-  def putIncomingTraffic(msg: OutgoingTrafficInfo) : Unit = {
+  def putIncomingTraffic(msg: OutgoingTrafficInfo): Unit = {
     incomingTrafficQueue += msg
 
     while (incomingTrafficQueue.nonEmpty && incomingTrafficQueue.max.timeframe <= currentTimeFrame) {
@@ -227,6 +226,43 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
         case _ => throw new ClassCastException
       }
     }
+  }
+
+  def printVehiclesPos(sleepOnMissing: Boolean): String = {
+    var carsCounter = 0
+    val msgBuilder = StringBuilder.newBuilder
+    msgBuilder append "\nPrinting cars positions:\n"
+    for (road <- horizontalRoads) {
+      var i = 0
+      for (roadElem <- road.elems) {
+        roadElem match {
+          case roadSeg: RoadSegment => {
+            for (vac <- roadSeg.vehicleIterator()) {
+              carsCounter += 1
+              msgBuilder append "%s\t%s\t%s\t%d\t%d\t%d\n".format(vac.vehicle.id, vac.vehicle.color, road.id, i, vac.laneIdx, vac.cellIdx)
+            }
+            i += 1
+          }
+          case _ =>
+        }
+      }
+    }
+    for (road <- verticalRoads) {
+      var i = 0
+      for (roadElem <- road.elems) {
+        roadElem match {
+          case roadSeg: RoadSegment => {
+            for (vac <- roadSeg.vehicleIterator()) {
+              carsCounter += 1
+              msgBuilder append "%s\t%s\t%s\t%d\t%d\t%d\n".format(vac.vehicle.id, vac.vehicle.color, road.id, i, vac.laneIdx, vac.cellIdx)
+            }
+            i += 1
+          }
+          case _ =>
+        }
+      }
+    }
+    msgBuilder.toString
   }
 
 }
