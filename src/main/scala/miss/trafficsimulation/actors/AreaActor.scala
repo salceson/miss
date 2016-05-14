@@ -36,7 +36,7 @@ class AreaActor extends FSM[State, Data] {
       log.info(s"Time frame: $timeFrame")
       log.info(s"Got $msg")
       log.info(s"Simulating timeFrame ${area.currentTimeFrame}...")
-      log.info(area.printVehiclesPos(true))
+//      log.info(area.printVehiclesPos(true))
       val outgoingTraffic = area.simulate()
       log.info(s"Messages to send: $outgoingTraffic")
       val messagesSent = mutable.Map(area.actorsAndRoadIds.map({
@@ -62,10 +62,11 @@ class AreaActor extends FSM[State, Data] {
         self ! ReadyForComputation(area.currentTimeFrame)
       }
       if (visualizer.isDefined) {
+        Thread.sleep(1000) // TODO read value from config
         visualizer.get ! TrafficState(area.horizontalRoads.view.toList,
-          area.verticalRoads.view.toList,
-          area.intersectionGreenLightsDirection)
-        Thread.sleep(1000)
+            area.verticalRoads.view.toList,
+            area.intersectionGreenLightsDirection,
+            area.currentTimeFrame)
       }
       goto(Simulating) using data
     case Event(VisualizationStartRequest(visualizer), AreaData(area, _)) =>

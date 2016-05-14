@@ -11,6 +11,7 @@ import miss.trafficsimulation.util.Color
 import scala.Array.ofDim
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
+import scala.util.Random
 
 case class AreaRoadDefinition(roadId: RoadId, direction: RoadDirection, outgoingActorRef: ActorRef)
 
@@ -22,6 +23,7 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
 
   private val roadSegmentsLength = areaConfig.getInt("cells_between_intersections")
   private val lanesNum = areaConfig.getInt("lanes")
+  private val trafficDensity = areaConfig.getDouble("traffic_density")
 
   private val vehicleConfig = config.getConfig("trafficsimulation.vehicle")
   private val maxVelocity = vehicleConfig.getInt("max_velocity")
@@ -47,6 +49,8 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
     .map((ard: AreaRoadDefinition) => (ard.outgoingActorRef, ard.roadId))
 
   private val roadsMap = Map((horizontalRoads ++ verticalRoads).map((r: Road) => r.id -> r): _*)
+
+  initTraffic()
 
   implicit val incomingTrafficOrdering = new Ordering[OutgoingTrafficInfo] {
     override def compare(x: OutgoingTrafficInfo, y: OutgoingTrafficInfo): Int = -x.timeframe.compare(y.timeframe)
@@ -82,14 +86,6 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
     val firstSegment = new RoadSegment(roadDef.roadId, lanesNum,
       (roadSegmentsLength * 0.5).toInt, None, firstIntersection, roadDef.direction,
       maxVelocity, maxAcceleration)
-
-    firstSegment.lanes(0).cells(0).vehicle = Some(Car(
-      id = VehicleIdGenerator.nextId,
-      maxVelocity = maxVelocity,
-      maxAcceleration = maxAcceleration,
-      color = Color.random,
-      timeFrame = 0
-    ))
 
     if (horizontal) {
       firstIntersection.horizontalRoadIn = firstSegment
@@ -131,6 +127,30 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
     roadElems += lastSegment
 
     new Road(roadDef.roadId, roadDef.direction, roadElems.toList)
+  }
+
+  def initTraffic() = {
+    for (road <- roadsMap.values) {
+      for (roadElem <- road.elems) {
+        roadElem match {
+          case rs: RoadSegment =>
+            for (lane <- rs.lanes) {
+              for (cell <- lane.cells) {
+                if (Random.nextFloat() <= trafficDensity) {
+                  cell.vehicle = Some(Car(
+                    id = VehicleIdGenerator.nextId,
+                    maxVelocity = maxVelocity,
+                    maxAcceleration = maxAcceleration,
+                    color = Color.random,
+                    timeFrame = 0
+                  ))
+                }
+              }
+            }
+          case _ =>
+        }
+      }
+    }
   }
 
   def simulate(): List[(ActorRef, RoadId, VehicleAndCoordinates)] = {

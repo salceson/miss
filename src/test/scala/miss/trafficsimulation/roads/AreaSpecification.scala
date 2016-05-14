@@ -97,6 +97,46 @@ class AreaSpecification extends Specification {
       area.simulate() // tf 4
       area.isReadyForComputation() must beFalse
     }
+
+    "simulate for another data" in {
+      val area = createAnotherTestArea
+      area.simulate() // tf 1
+      area.isReadyForComputation() must beTrue
+      area.simulate() // tf 2
+      area.isReadyForComputation() must beTrue
+      area.simulate() // tf 3
+      area.isReadyForComputation() must beFalse
+
+      area.putIncomingTraffic(OutgoingTrafficInfo(RoadId(1), 2, List()))
+      area.isReadyForComputation() must beFalse
+
+      area.putIncomingTraffic(OutgoingTrafficInfo(RoadId(2), 2, List()))
+      area.isReadyForComputation() must beFalse
+
+      area.putIncomingTraffic(OutgoingTrafficInfo(RoadId(3), 2, List()))
+      area.isReadyForComputation() must beFalse
+
+      area.putIncomingTraffic(OutgoingTrafficInfo(RoadId(4), 1, List()))
+      area.isReadyForComputation() must beFalse
+
+      area.putIncomingTraffic(OutgoingTrafficInfo(RoadId(1), 1, List()))
+      area.isReadyForComputation() must beFalse
+
+      area.putIncomingTraffic(OutgoingTrafficInfo(RoadId(2), 1, List()))
+      area.isReadyForComputation() must beFalse
+
+      area.putIncomingTraffic(OutgoingTrafficInfo(RoadId(3), 1, List()))
+      area.isReadyForComputation() must beTrue
+
+      area.simulate() // tf 4
+      area.isReadyForComputation() must beFalse
+
+      area.putIncomingTraffic(OutgoingTrafficInfo(RoadId(4), 2, List()))
+      area.isReadyForComputation() must beTrue
+
+      area.simulate() // tf 5
+      area.isReadyForComputation() must beFalse
+    }
   }
 
   private def createTestArea: Area = {
@@ -107,6 +147,18 @@ class AreaSpecification extends Specification {
 
     val area = new Area(List(road1, road2),
       List(road3, road4), ConfigFactory.load("simple_area.conf"))
+
+    area
+  }
+
+  private def createAnotherTestArea: Area = {
+    val road1 = AreaRoadDefinition(RoadId(1), NS, null)
+    val road2 = AreaRoadDefinition(RoadId(2), SN, null)
+    val road3 = AreaRoadDefinition(RoadId(3), EW, null)
+    val road4 = AreaRoadDefinition(RoadId(4), WE, null)
+
+    val area = new Area(List(road1, road2),
+      List(road3, road4), ConfigFactory.load("another_area.conf"))
 
     area
   }

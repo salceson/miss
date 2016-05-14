@@ -12,13 +12,13 @@ class RoadSegmentSpecification extends Specification {
   "RoadSegment" should {
     "iterate through cars in proper way" in {
       val roadSegment = new RoadSegment(RoadId(1), 3, 7, None, null, NS, 5, 1)
-      roadSegment.lanes(0).cells(6).vehicle = Some(Car(VehicleId("1"), 2, 1, Yellow, 0))
-      roadSegment.lanes(1).cells(5).vehicle = Some(Car(VehicleId("2"), 2, 1, Magenta, 0))
-      roadSegment.lanes(2).cells(5).vehicle = Some(Car(VehicleId("3"), 2, 1, Cyan, 0))
-      roadSegment.lanes(0).cells(3).vehicle = Some(Car(VehicleId("4"), 2, 1, Red, 0))
-      roadSegment.lanes(2).cells(3).vehicle = Some(Car(VehicleId("5"), 2, 1, Green, 0))
-      roadSegment.lanes(1).cells(2).vehicle = Some(Car(VehicleId("6"), 2, 1, Blue, 0))
-      roadSegment.lanes(2).cells(0).vehicle = Some(Car(VehicleId("7"), 2, 1, Black, 0))
+      roadSegment.lanes(0).cells(6).vehicle = Some(Car(VehicleId(1), 2, 1, Yellow, 0))
+      roadSegment.lanes(1).cells(5).vehicle = Some(Car(VehicleId(2), 2, 1, Magenta, 0))
+      roadSegment.lanes(2).cells(5).vehicle = Some(Car(VehicleId(3), 2, 1, Cyan, 0))
+      roadSegment.lanes(0).cells(3).vehicle = Some(Car(VehicleId(4), 2, 1, Red, 0))
+      roadSegment.lanes(2).cells(3).vehicle = Some(Car(VehicleId(5), 2, 1, Green, 0))
+      roadSegment.lanes(1).cells(2).vehicle = Some(Car(VehicleId(6), 2, 1, Blue, 0))
+      roadSegment.lanes(2).cells(0).vehicle = Some(Car(VehicleId(7), 2, 1, Black, 0))
 
       val actual = roadSegment.vehicleIterator().toList.map(
         (vac: VehicleAndCoordinates) => vac.vehicle.color)
@@ -28,15 +28,15 @@ class RoadSegmentSpecification extends Specification {
     }
     "correctly calculate possible moves (first half of road)" in {
       val roadSegment = new RoadSegment(RoadId(1), 3, 10, None, null, NS, 5, 1)
-      val car1 = Car(VehicleId("1"), 10, 1, Black, 5, 0)
-      val car2 = Car(VehicleId("2"), 10, 1, White, 5, 0)
-      val car3 = Car(VehicleId("3"), 10, 1, Yellow, 5, 0)
+      val car1 = Car(VehicleId(1), 10, 1, Black, 5, 0)
+      val car2 = Car(VehicleId(2), 10, 1, White, 5, 0)
+      val car3 = Car(VehicleId(3), 10, 1, Yellow, 5, 0)
       roadSegment.lanes(0).cells(2).vehicle = Some(car1)
       roadSegment.lanes(1).cells(2).vehicle = Some(car2)
       roadSegment.lanes(2).cells(2).vehicle = Some(car3)
-      roadSegment.lanes(0).cells(5).vehicle = Some(Car(VehicleId("4"), 10, 1, Red, 5, 0))
-      roadSegment.lanes(1).cells(9).vehicle = Some(Car(VehicleId("5"), 10, 1, Green, 5, 0))
-      roadSegment.lanes(2).cells(5).vehicle = Some(Car(VehicleId("6"), 10, 1, Blue, 5, 0))
+      roadSegment.lanes(0).cells(5).vehicle = Some(Car(VehicleId(4), 10, 1, Red, 5, 0))
+      roadSegment.lanes(1).cells(9).vehicle = Some(Car(VehicleId(5), 10, 1, Green, 5, 0))
+      roadSegment.lanes(2).cells(5).vehicle = Some(Car(VehicleId(6), 10, 1, Blue, 5, 0))
       val actual1 = roadSegment.calculatePossibleMoves(VehicleAndCoordinates(car1, 0, 2), Horizontal)
       val actual2 = roadSegment.calculatePossibleMoves(VehicleAndCoordinates(car2, 1, 2), Horizontal)
       val actual3 = roadSegment.calculatePossibleMoves(VehicleAndCoordinates(car3, 2, 2), Horizontal)
@@ -64,11 +64,11 @@ class RoadSegmentSpecification extends Specification {
       intersection.horizontalRoadOut = horizontalRoadSegmentOut
       intersection.verticalRoadIn = verticalRoadSegmentIn
       intersection.verticalRoadOut = verticalRoadSegmentOut
-      val car = Car(VehicleId("1"), 10, 1, Black, 5, 0)
+      val car = Car(VehicleId(1), 10, 1, Black, 5, 0)
       horizontalRoadSegmentIn.lanes(0).cells(7).vehicle = Some(car)
-      horizontalRoadSegmentOut.lanes(0).cells(2).vehicle = Some(Car(VehicleId("2"), 10, 1, Red, 5, 0))
-      verticalRoadSegmentOut.lanes(1).cells(2).vehicle = Some(Car(VehicleId("3"), 10, 1, Blue, 5, 0))
-      verticalRoadSegmentOut.lanes(2).cells(0).vehicle = Some(Car(VehicleId("4"), 10, 1, Green, 5, 0))
+      horizontalRoadSegmentOut.lanes(0).cells(2).vehicle = Some(Car(VehicleId(2), 10, 1, Red, 5, 0))
+      verticalRoadSegmentOut.lanes(1).cells(2).vehicle = Some(Car(VehicleId(3), 10, 1, Blue, 5, 0))
+      verticalRoadSegmentOut.lanes(2).cells(0).vehicle = Some(Car(VehicleId(4), 10, 1, Green, 5, 0))
       val listOfPossibleMovesVertical = horizontalRoadSegmentIn.calculatePossibleMoves(VehicleAndCoordinates(
         car, 0, 7), Vertical)
       val listOfPossibleMovesHorizontal = horizontalRoadSegmentIn.calculatePossibleMoves(VehicleAndCoordinates(
