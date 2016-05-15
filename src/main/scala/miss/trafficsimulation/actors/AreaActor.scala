@@ -35,10 +35,24 @@ class AreaActor extends FSM[State, Data] {
     case Event(msg@ReadyForComputation(timeFrame), data@AreaData(area, visualizer)) if area.currentTimeFrame == timeFrame =>
       log.info(s"Time frame: $timeFrame")
       log.info(s"Got $msg")
-      log.info(s"Simulating timeFrame ${area.currentTimeFrame}...")
-//      log.info(area.printVehiclesPos(true))
+      log.info(s"Simulating timeFrame ${area.currentTimeFrame+1}...")
+//      log.info(area.printVehiclesPos())
+      val beforeCarsCount = area.countCars()
+      log.info(s"Total cars before simulation: " + beforeCarsCount)
       val outgoingTraffic = area.simulate()
+      val afterCarsCount = area.countCars()
+      log.info(s"Total cars after simulation: " + afterCarsCount)
+      log.info(s"Sent cars: " + outgoingTraffic.size)
+
+      log.info(s"Done simulation of timeFrame ${area.currentTimeFrame}")
+//      log.info(area.printVehiclesPos())
       log.info(s"Messages to send: $outgoingTraffic")
+
+      if(afterCarsCount + outgoingTraffic.size != beforeCarsCount) {
+        log.error("Some cars are missing: " + (beforeCarsCount - outgoingTraffic.size - afterCarsCount))
+        throw new RuntimeException("Some cars are missing: " + (beforeCarsCount - outgoingTraffic.size - afterCarsCount))
+      }
+
       val messagesSent = mutable.Map(area.actorsAndRoadIds.map({
         case (a: ActorRef, r: RoadId) => (a, r) -> false
       }): _*)

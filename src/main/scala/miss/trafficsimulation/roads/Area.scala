@@ -24,6 +24,7 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
   private val roadSegmentsLength = areaConfig.getInt("cells_between_intersections")
   private val lanesNum = areaConfig.getInt("lanes")
   private val trafficDensity = areaConfig.getDouble("traffic_density")
+  private val greenLightDuration = areaConfig.getInt("green_light_duration")
 
   private val vehicleConfig = config.getConfig("trafficsimulation.vehicle")
   private val maxVelocity = vehicleConfig.getInt("max_velocity")
@@ -188,9 +189,11 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
 
     _currentTimeFrame = timeFrame
 
-    //TODO read green light duration from config
-    intersectionGreenLightsDirection =
-      if (intersectionGreenLightsDirection == Horizontal) Vertical else Horizontal
+    if (timeFrame % greenLightDuration == 0) {
+      intersectionGreenLightsDirection =
+        if (intersectionGreenLightsDirection == Horizontal) Vertical else Horizontal
+    }
+
     vehiclesAndCoordinatesOutOfArea.toList
   }
 
@@ -248,7 +251,35 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
     }
   }
 
-  def printVehiclesPos(sleepOnMissing: Boolean): String = {
+  def countCars(): Int = {
+    var carsCounter = 0
+    for (road <- horizontalRoads) {
+      for (roadElem <- road.elems) {
+        roadElem match {
+          case roadSeg: RoadSegment =>
+            for (vac <- roadSeg.vehicleIterator()) {
+              carsCounter += 1
+            }
+          case _ =>
+        }
+      }
+    }
+    for (road <- verticalRoads) {
+      for (roadElem <- road.elems) {
+        roadElem match {
+          case roadSeg: RoadSegment =>
+            for (vac <- roadSeg.vehicleIterator()) {
+              carsCounter += 1
+            }
+          case _ =>
+        }
+      }
+    }
+
+    carsCounter
+  }
+
+  def printVehiclesPos(): String = {
     var carsCounter = 0
     val msgBuilder = StringBuilder.newBuilder
     msgBuilder append "\nPrinting cars positions:\n"
@@ -259,7 +290,7 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
           case roadSeg: RoadSegment => {
             for (vac <- roadSeg.vehicleIterator()) {
               carsCounter += 1
-              msgBuilder append "%s\t%s\t%s\t%d\t%d\t%d\n".format(vac.vehicle.id, vac.vehicle.color, road.id, i, vac.laneIdx, vac.cellIdx)
+              msgBuilder append "%s\t%17s\t%s\t%d\t%d\t%d\ttf: %d\n".format(vac.vehicle.id, vac.vehicle.color, road.id, i, vac.laneIdx, vac.cellIdx, vac.vehicle.timeFrame)
             }
             i += 1
           }
@@ -274,7 +305,7 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
           case roadSeg: RoadSegment => {
             for (vac <- roadSeg.vehicleIterator()) {
               carsCounter += 1
-              msgBuilder append "%s\t%s\t%s\t%d\t%d\t%d\n".format(vac.vehicle.id, vac.vehicle.color, road.id, i, vac.laneIdx, vac.cellIdx)
+              msgBuilder append "%s\t%17s\t%s\t%d\t%d\t%d\ttf: %d\n".format(vac.vehicle.id, vac.vehicle.color, road.id, i, vac.laneIdx, vac.cellIdx, vac.vehicle.timeFrame)
             }
             i += 1
           }
@@ -282,6 +313,8 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
         }
       }
     }
+
+    msgBuilder append "\nTotal cars: " + carsCounter + "\n"
     msgBuilder.toString
   }
 

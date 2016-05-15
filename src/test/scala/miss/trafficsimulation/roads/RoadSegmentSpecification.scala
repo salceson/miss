@@ -4,6 +4,7 @@ import miss.trafficsimulation.roads.LightsDirection.{Horizontal, Vertical}
 import miss.trafficsimulation.roads.RoadDirection.{EW, NS}
 import miss.trafficsimulation.traffic.MoveDirection.{GoStraight, SwitchLaneLeft, SwitchLaneRight, Turn}
 import miss.trafficsimulation.traffic.{Car, Move, VehicleId}
+import miss.trafficsimulation.util.Color
 import miss.trafficsimulation.util.CommonColors._
 import org.specs2.mutable.Specification
 
@@ -81,6 +82,42 @@ class RoadSegmentSpecification extends Specification {
       listOfPossibleMovesVertical must contain(
         Move(GoStraight, 0, 2)
       )
+    }
+
+    "correctly calculate moves for car staying before intersection" in {
+      val intersection = new Intersection()
+      val horizontalRoadSegmentIn = new RoadSegment(RoadId(2), 3, 5, None, intersection, EW, 5, 1)
+      val horizontalRoadSegmentOut = new RoadSegment(RoadId(2), 3, 10, Some(intersection), null, EW, 5, 1)
+      val verticalRoadSegmentIn = new RoadSegment(RoadId(1), 3, 5, None, intersection, NS, 5, 1)
+      val verticalRoadSegmentOut = new RoadSegment(RoadId(1), 3, 10, Some(intersection), null, NS, 5, 1)
+      intersection.horizontalRoadIn = horizontalRoadSegmentIn
+      intersection.horizontalRoadOut = horizontalRoadSegmentOut
+      intersection.verticalRoadIn = verticalRoadSegmentIn
+      intersection.verticalRoadOut = verticalRoadSegmentOut
+
+      val car1 = Car(VehicleId(7894), 10, 1, Color(56,44,192), 0, 0)
+      val car2 = Car(VehicleId(7896), 10, 1, Color(179,80,216), 0, 0)
+      val car3 = Car(VehicleId(7895), 10, 1, Color(203,223,35), 0, 0)
+      val car4 = Car(VehicleId(7897), 10, 1, Color(30,2,174), 0, 0)
+
+      horizontalRoadSegmentOut.lanes(1).cells(0).vehicle = Some(car1)
+      verticalRoadSegmentOut.lanes(1).cells(2).vehicle = Some(car2)
+      horizontalRoadSegmentIn.lanes(1).cells(4).vehicle = Some(car3)
+      horizontalRoadSegmentIn.lanes(0).cells(3).vehicle = Some(car4)
+
+      for(vac <- horizontalRoadSegmentIn.vehicleIterator()) {
+        println(vac)
+      }
+
+      val listOfPossibleMoves = horizontalRoadSegmentIn.calculatePossibleMoves(VehicleAndCoordinates(car4, 0, 3), Horizontal)
+
+      for(move <- listOfPossibleMoves) {
+        println(move)
+      }
+
+      val expectedMoves = List(Move(GoStraight, 0, 5), Move(Turn, 0, 5), Move(Turn, 1, 3), Move(Turn, 2, 5))
+
+      listOfPossibleMoves must containAllOf(expectedMoves)
     }
   }
 }

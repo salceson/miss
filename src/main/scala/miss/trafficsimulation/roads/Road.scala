@@ -159,7 +159,7 @@ class RoadSegment(val roadId: RoadId,
     val possibleMoves = ListBuffer[Move]()
     val possibleStraightInThisSegment = getMaxPossibleCellsInLane(
       vac.cellIdx + 1, laneLength, vac.laneIdx)
-    if (0 < possibleStraightInThisSegment && possibleStraightInThisSegment < distanceBeforeSegmentEnd) {
+    if (possibleStraightInThisSegment < distanceBeforeSegmentEnd) {
       possibleMoves += Move(GoStraight, vac.laneIdx, possibleStraightInThisSegment)
     } else {
       out match {
@@ -259,8 +259,9 @@ class RoadSegment(val roadId: RoadId,
       val gotToNewSegment = (oldCellIdx + cells) >= laneLength
       val newCellIdx = (oldCellIdx + cells) % laneLength
       move.direction match {
-        case Turn =>
+        case Turn if gotToNewSegment =>
           newLaneIdx = move.laneIdx
+        case Turn if !gotToNewSegment =>
         case SwitchLaneLeft =>
           newLaneIdx -= 1
         case SwitchLaneRight =>
@@ -302,23 +303,49 @@ class RoadSegment(val roadId: RoadId,
 
   def availableCells(laneIdx: Int, limit: Int): Int = {
     val cells = lanes(laneIdx).cells
-    for (i <- 1 to limit) {
+    for (i <- 0 to limit) {
       if (cells(i).vehicle.isDefined)
         return i - 1
     }
     limit
   }
 
+  def findLaneWithAvailableCell(): Int = {
+    for (i <- 0 until lanesCount) {
+      if(lanes(i).cells(0).vehicle.isEmpty) {
+        return i
+      }
+    }
+    -1
+  }
+
   def putTraffic(incomingTrafficTimeFrame: Long, incomingTraffic: List[VehicleAndCoordinates], lightsDirection: LightsDirection): Unit = {
     lastIncomingTrafficTimeFrame = incomingTrafficTimeFrame
 
     for (VehicleAndCoordinates(vehicle, laneIdx, cellIdx) <- incomingTraffic) {
-      val cellToPutId = Math.min(cellIdx, availableCells(laneIdx, cellIdx))
+      var laneToPutIdx = laneIdx
+      if(lanes(laneIdx).cells(cellIdx).vehicle.nonEmpty) {
+        laneToPutIdx = findLaneWithAvailableCell()
+      }
+
+      if(laneToPutIdx < 0) {
+        //FIXME some incoming cars are ignored if no space to put them
+        throw new IllegalStateException("Cannot put car. No available space on any lane.")
+      }
+
       val vehicleToPut = Car(VehicleIdGenerator.nextId, vehicle.maxVelocity, vehicle.maxAcceleration, vehicle.color, incomingTrafficTimeFrame, vehicle.currentVelocity, vehicle.currentAcceleration)
-      lanes(laneIdx).cells(cellToPutId).vehicle = Some(vehicleToPut)
+      val cellToPutId = Math.min(cellIdx, availableCells(laneToPutIdx, cellIdx))
+      //FIXME sometimes cellToPutId is negative
+
+      if(cellToPutId < 0) {
+        //TODO remove after fixing above
+        throw new IllegalStateException("CellToPutID is negative")
+      }
+
+      lanes(laneToPutIdx).cells(cellToPutId).vehicle = Some(vehicleToPut)
     }
 
-    for (timeFrame <- (incomingTrafficTimeFrame + 1) until currentTimeFrame) {
+    for (timeFrame <- (incomingTrafficTimeFrame + 1) to currentTimeFrame) {
       simulate(lightsDirection, timeFrame)
     }
 
