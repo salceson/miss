@@ -64,7 +64,7 @@ class Supervisor(config: Config) extends Actor {
       }
       // Generate area roads definitions
       for (i <- 0 until verticalRoadsNum) {
-        val direction = if (i % 2 == 0) RoadDirection.SN else RoadDirection.NS
+        val direction = if (i % 2 == 0) RoadDirection.NS else RoadDirection.SN
         verticalRoadDefs(i) = RoadDefinition(RoadId(i), direction)
       }
       for (j <- 0 until horizontalRoadsNum) {
