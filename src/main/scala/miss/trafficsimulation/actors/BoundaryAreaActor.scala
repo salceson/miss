@@ -8,9 +8,17 @@ class BoundaryAreaActor(inActor: ActorRef, outActor: ActorRef) extends Actor {
 
   override def receive: Receive = {
     case msg: OutgoingTrafficInfo =>
-      outActor ! msg
+      val senderActor = sender()
+      senderActor match {
+        case a: ActorRef if a == inActor => outActor ! msg
+        case a: ActorRef if a == outActor => inActor ! msg
+      }
     case msg: AvailableRoadspaceInfo =>
-      inActor ! msg
+      val senderActor = sender()
+      senderActor match {
+        case a: ActorRef if a == inActor => outActor ! msg
+        case a: ActorRef if a == outActor => inActor ! msg
+      }
   }
 }
 

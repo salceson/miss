@@ -77,7 +77,7 @@ class Supervisor(config: Config) extends Actor {
           val areaVerticalRoadDefs = ListBuffer[AreaRoadDefinition]()
           val areaHorizontalRoadDefs = ListBuffer[AreaRoadDefinition]()
 
-          for (vertRoad <- (i * size) until (i * size + size)) {
+          for (vertRoad <- (j * size) until (j * size + size)) {
             if (i == 0) {
               areaVerticalRoadDefs +=
                 verticalRoadDefs(vertRoad).toAreaRoadDefinition(verticalBoundaryActors(j))
@@ -87,7 +87,7 @@ class Supervisor(config: Config) extends Actor {
             }
           }
 
-          for (horRoad <- (j * size) until (j * size + size)) {
+          for (horRoad <- (i * size) until (i * size + size)) {
             if (j == 0) {
               areaHorizontalRoadDefs +=
                 horizontalRoadDefs(horRoad).toAreaRoadDefinition(horizontalBoundaryActors(i))
