@@ -1,7 +1,7 @@
 package miss.trafficsimulation.actors
 
 import akka.actor.{ActorRef, FSM}
-import com.typesafe.config.ConfigFactory
+import miss.supervisor.Supervisor
 import miss.trafficsimulation.actors.AreaActor.{Data, State}
 import miss.trafficsimulation.roads.{Area, AreaRoadDefinition, RoadId, VehicleAndCoordinates}
 import miss.visualization.VisualizationActor.TrafficState
@@ -11,44 +11,51 @@ import scala.collection.mutable
 class AreaActor extends FSM[State, Data] {
 
   import AreaActor._
+  import Supervisor._
+
+  val config = context.system.settings.config
+  val timeout = config.getInt("trafficsimulation.visualization.delay")
+  val initialTimeout = config.getInt("trafficsimulation.area.initial_delay")
 
   startWith(Initialized, EmptyData)
 
   when(Initialized) {
-    case Event(StartSimulation(verticalRoadsDefs, horizontalRoadsDefs), EmptyData) =>
-      log.info(s"Actor ${this.toString} starting simulation...")
-      val config = ConfigFactory.load()
+    case Event(StartSimulation(verticalRoadsDefs, horizontalRoadsDefs, x, y), EmptyData) =>
+      val supervisor = sender()
+      log.info(s"Actor ($x, $y) starting simulation...")
       val area = new Area(verticalRoadsDefs, horizontalRoadsDefs, config)
-      Thread.sleep(5000) //TODO: Dirty magic
+      Thread.sleep(initialTimeout) // This is to avoid sending messages to uninitialized actors
       self ! ReadyForComputation(0)
-      goto(Simulating) using AreaData(area, None)
+      goto(Simulating) using AreaData(area, None, x, y, supervisor)
   }
 
   when(Simulating) {
-    case Event(msg@OutgoingTrafficInfo(roadId, timeFrame, outgoingTraffic), d@AreaData(area, visualizer)) =>
-      log.info(s"Got $msg")
+    case Event(msg@OutgoingTrafficInfo(roadId, timeFrame, outgoingTraffic), d: AreaData) =>
+      val area = d.area
+      log.debug(s"Got $msg")
       area.putIncomingTraffic(msg)
       if (area.isReadyForComputation()) {
         self ! ReadyForComputation(area.currentTimeFrame)
       }
       stay
-    case Event(msg@ReadyForComputation(timeFrame), data@AreaData(area, visualizer)) if area.currentTimeFrame == timeFrame =>
+    case Event(msg@ReadyForComputation(timeFrame), data@AreaData(area, visualizer, x, y, supervisor)) if area.currentTimeFrame == timeFrame =>
       log.info(s"Time frame: $timeFrame")
-      log.info(s"Got $msg")
-      log.info(s"Simulating timeFrame ${area.currentTimeFrame+1}...")
-//      log.info(area.printVehiclesPos())
+      log.debug(s"Got $msg")
+      log.info(s"Simulating timeFrame ${area.currentTimeFrame + 1}...")
+      // log.debug(area.printVehiclesPos())
+      supervisor ! TimeFrameUpdate(x, y, area.currentTimeFrame + 1)
       val beforeCarsCount = area.countCars()
-      log.info(s"Total cars before simulation: " + beforeCarsCount)
+      log.debug(s"Total cars before simulation: " + beforeCarsCount)
       val outgoingTraffic = area.simulate()
       val afterCarsCount = area.countCars()
-      log.info(s"Total cars after simulation: " + afterCarsCount)
-      log.info(s"Sent cars: " + outgoingTraffic.size)
+      log.debug(s"Total cars after simulation: " + afterCarsCount)
+      log.debug(s"Sent cars: " + outgoingTraffic.size)
 
       log.info(s"Done simulation of timeFrame ${area.currentTimeFrame}")
-//      log.info(area.printVehiclesPos())
-      log.info(s"Messages to send: $outgoingTraffic")
+      // log.debug(area.printVehiclesPos())
+      log.debug(s"Messages to send: $outgoingTraffic")
 
-      if(afterCarsCount + outgoingTraffic.size != beforeCarsCount) {
+      if (afterCarsCount + outgoingTraffic.size != beforeCarsCount) {
         log.error("Some cars are missing: " + (beforeCarsCount - outgoingTraffic.size - afterCarsCount))
         throw new RuntimeException("Some cars are missing: " + (beforeCarsCount - outgoingTraffic.size - afterCarsCount))
       }
@@ -60,7 +67,7 @@ class AreaActor extends FSM[State, Data] {
         case (actorRef, roadId, _) => (actorRef, roadId)
       } foreach {
         case ((actorRef, roadId), list) =>
-          log.info(s"Sending to $actorRef; roadId: $roadId; traffic: $list")
+          log.debug(s"Sending to $actorRef; roadId: $roadId; traffic: $list")
           messagesSent((actorRef, roadId)) = true
           actorRef ! OutgoingTrafficInfo(roadId, area.currentTimeFrame, list map {
             case (_, _, vac) => vac
@@ -68,7 +75,7 @@ class AreaActor extends FSM[State, Data] {
       }
       messagesSent foreach {
         case ((actorRef, roadId), false) =>
-          log.info(s"Sending to $actorRef; roadId: $roadId; traffic: No traffic")
+          log.debug(s"Sending to $actorRef; roadId: $roadId; traffic: No traffic")
           actorRef ! OutgoingTrafficInfo(roadId, area.currentTimeFrame, List())
         case _ =>
       }
@@ -76,17 +83,17 @@ class AreaActor extends FSM[State, Data] {
         self ! ReadyForComputation(area.currentTimeFrame)
       }
       if (visualizer.isDefined) {
-        Thread.sleep(1000) // TODO read value from config
+        Thread.sleep(timeout)
         visualizer.get ! TrafficState(area.horizontalRoads.view.toList,
-            area.verticalRoads.view.toList,
-            area.intersectionGreenLightsDirection,
-            area.currentTimeFrame)
+          area.verticalRoads.view.toList,
+          area.intersectionGreenLightsDirection,
+          area.currentTimeFrame)
       }
       goto(Simulating) using data
-    case Event(VisualizationStartRequest(visualizer), AreaData(area, _)) =>
-      goto(Simulating) using AreaData(area, Some(visualizer))
-    case Event(VisualizationStopRequest(_), AreaData(area, _)) =>
-      goto(Simulating) using AreaData(area, None)
+    case Event(VisualizationStartRequest(visualizer), ad: AreaData) =>
+      goto(Simulating) using ad.copy(visualizer = Some(visualizer))
+    case Event(VisualizationStopRequest(_), ad: AreaData) =>
+      goto(Simulating) using ad.copy(visualizer = None)
   }
 }
 
@@ -95,7 +102,9 @@ object AreaActor {
   // Messages:
 
   case class StartSimulation(verticalRoadsDefs: List[AreaRoadDefinition],
-                             horizontalRoadsDefs: List[AreaRoadDefinition])
+                             horizontalRoadsDefs: List[AreaRoadDefinition],
+                             x: Int,
+                             y: Int)
 
   case class AvailableRoadspaceInfo(roadId: RoadId,
                                     timeframe: Long,
@@ -125,9 +134,11 @@ object AreaActor {
 
   case object EmptyData extends Data
 
-  /**
-    * @param area
-    */
-  case class AreaData(area: Area, visualizer: Option[ActorRef]) extends Data
+  case class AreaData(area: Area,
+                      visualizer: Option[ActorRef],
+                      x: Int,
+                      y: Int,
+                      supervisor: ActorRef)
+    extends Data
 
 }

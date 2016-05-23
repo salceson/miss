@@ -2,6 +2,7 @@ package miss.supervisor
 
 import akka.actor._
 import com.typesafe.config.Config
+import miss.cityvisualization.CityVisualizerActor
 import miss.trafficsimulation.actors._
 import miss.trafficsimulation.roads.RoadDirection.RoadDirection
 import miss.trafficsimulation.roads._
@@ -12,6 +13,7 @@ import scala.collection.mutable.ListBuffer
 class Supervisor(config: Config) extends Actor {
 
   import AreaActor._
+  import CityVisualizerActor._
   import Supervisor._
 
   private val cols = config.getInt("trafficsimulation.city.cols")
@@ -25,6 +27,8 @@ class Supervisor(config: Config) extends Actor {
   private val verticalBoundaryActors = ofDim[ActorRef](cols)
   private val horizontalRoadDefs = ofDim[RoadDefinition](horizontalRoadsNum)
   private val verticalRoadDefs = ofDim[RoadDefinition](verticalRoadsNum)
+
+  @volatile var cityVisualizer: Option[ActorRef] = None
 
   override def receive: Receive = {
     case Start =>
@@ -97,7 +101,7 @@ class Supervisor(config: Config) extends Actor {
             }
           }
 
-          actors(i)(j) ! StartSimulation(areaVerticalRoadDefs.toList, areaHorizontalRoadDefs.toList)
+          actors(i)(j) ! StartSimulation(areaVerticalRoadDefs.toList, areaHorizontalRoadDefs.toList, i, j)
         }
       }
     case StartVisualization(x, y) =>
@@ -106,6 +110,12 @@ class Supervisor(config: Config) extends Actor {
     case StopVisualization(x, y) =>
       val visualizer = sender()
       actors(x)(y) ! VisualizationStopRequest(visualizer)
+    case CityVisualizationStartRequest =>
+      cityVisualizer = Some(sender())
+    case CityVisualizationStopRequest =>
+      cityVisualizer = None
+    case TimeFrameUpdate(x, y, newTimeFrame) =>
+      cityVisualizer.foreach(ar => ar ! CityVisualizationUpdate(x, y, newTimeFrame))
   }
 }
 
@@ -116,6 +126,12 @@ object Supervisor {
   case class StartVisualization(x: Int, y: Int)
 
   case class StopVisualization(x: Int, y: Int)
+
+  case object CityVisualizationStartRequest
+
+  case object CityVisualizationStopRequest
+
+  case class TimeFrameUpdate(x: Int, y: Int, newTimeFrame: Long)
 
   def props(config: Config): Props = Props(classOf[Supervisor], config)
 
