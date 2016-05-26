@@ -12,7 +12,7 @@ trait Visualization extends SimpleSwingApplication {
   var x: Int = 0
   var y: Int = 0
 
-  val config = ConfigFactory.load("visualization.cong")
+  val config = ConfigFactory.load("visualization.conf")
   val trafficSimulationConfig = config.getConfig("trafficsimulation")
   val areaConfig = trafficSimulationConfig.getConfig("area")
   val visConfig = trafficSimulationConfig.getConfig("visualization")
