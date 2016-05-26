@@ -161,72 +161,70 @@ class RoadSegment(val roadId: RoadId,
       vac.cellIdx + 1, laneLength, vac.laneIdx)
     if (possibleStraightInThisSegment < distanceBeforeSegmentEnd) {
       possibleMoves += Move(GoStraight, vac.laneIdx, possibleStraightInThisSegment)
-    } else {
-      out match {
-        case _: NextAreaRoadSegment =>
-          possibleMoves += Move(GoStraight, vac.laneIdx, maxVelocity) //TODO calculate available cells, temporarily using maxVelocity
-        case intersection: Intersection => {
-          if (areLightsRed(lightsDirection) && distanceBeforeSegmentEnd > 0) {
-            possibleMoves +=
-              Move(GoStraight, vac.laneIdx, Math.min(possibleStraightInThisSegment, distanceBeforeSegmentEnd))
-          }
-          else if (!areLightsRed(lightsDirection)) {
-            val nextSegment = intersection.oppositeRoadSegment(this)
-            val turnSegment = intersection.turnRoadSegment(this)
-            //Go straight
-            val possibleStraightInNextSegment = nextSegment.getMaxPossibleCellsInLane(
-              0, maxVelocity - possibleStraightInThisSegment, vac.laneIdx
-            )
-            if (possibleStraightInThisSegment + possibleStraightInNextSegment > 0) {
-              possibleMoves += Move(GoStraight, vac.laneIdx,
-                possibleStraightInThisSegment + possibleStraightInNextSegment)
-            }
-            //Turn left
-            if (vac.laneIdx == 0) {
-              val turnPossible = roadDirection match {
-                case NS if turnSegment.roadDirection == WE => true
-                case SN if turnSegment.roadDirection == EW => true
-                case EW if turnSegment.roadDirection == NS => true
-                case WE if turnSegment.roadDirection == SN => true
-                case _ => false
-              }
-              if (turnPossible) {
-                for (newLaneIdx <- 0 until lanesCount) {
-                  val possibleInTurnSegment = turnSegment.getMaxPossibleCellsInLane(
-                    0, maxVelocity - possibleStraightInThisSegment, newLaneIdx
-                  )
-                  if (possibleInTurnSegment > 0) {
-                    possibleMoves += Move(Turn, newLaneIdx,
-                      possibleStraightInThisSegment + possibleInTurnSegment)
-                  }
-                }
-              }
-            }
-            //Turn right
-            if (vac.laneIdx == lanesCount - 1) {
-              val turnPossible = roadDirection match {
-                case NS if turnSegment.roadDirection == EW => true
-                case SN if turnSegment.roadDirection == WE => true
-                case EW if turnSegment.roadDirection == SN => true
-                case WE if turnSegment.roadDirection == NS => true
-                case _ => false
-              }
-              if (turnPossible) {
-                for (newLaneIdx <- 0 until lanesCount) {
-                  val possibleInTurnSegment = turnSegment.getMaxPossibleCellsInLane(
-                    0, maxVelocity - possibleStraightInThisSegment, newLaneIdx
-                  )
-                  if (possibleInTurnSegment > 0) {
-                    possibleMoves += Move(Turn, newLaneIdx,
-                      possibleStraightInThisSegment + possibleInTurnSegment)
-                  }
-                }
-              }
-            }
-          }
-          // else wait on red light
+    } else out match {
+      case _: NextAreaRoadSegment =>
+        possibleMoves += Move(GoStraight, vac.laneIdx, maxVelocity) //TODO calculate available cells, temporarily using maxVelocity
+      case intersection: Intersection =>
+        if (areLightsRed(lightsDirection) && distanceBeforeSegmentEnd > 0) {
+          possibleMoves +=
+            Move(GoStraight, vac.laneIdx, Math.min(possibleStraightInThisSegment, distanceBeforeSegmentEnd))
         }
-      }
+        else if (!areLightsRed(lightsDirection)) {
+          val nextSegment = intersection.oppositeRoadSegment(this)
+          val turnSegment = intersection.turnRoadSegment(this)
+          //Go straight
+          val possibleStraightInNextSegment = nextSegment.getMaxPossibleCellsInLane(
+            0, maxVelocity - possibleStraightInThisSegment, vac.laneIdx
+          )
+          if (possibleStraightInThisSegment + possibleStraightInNextSegment > 0) {
+            possibleMoves += Move(GoStraight, vac.laneIdx,
+              possibleStraightInThisSegment + possibleStraightInNextSegment)
+          }
+          //Turn left
+          if (vac.laneIdx == 0) {
+            val turnPossible = roadDirection match {
+              case NS if turnSegment.roadDirection == WE => true
+              case SN if turnSegment.roadDirection == EW => true
+              case EW if turnSegment.roadDirection == NS => true
+              case WE if turnSegment.roadDirection == SN => true
+              case _ => false
+            }
+            if (turnPossible) {
+              for (newLaneIdx <- 0 until lanesCount) {
+                val possibleInTurnSegment = turnSegment.getMaxPossibleCellsInLane(
+                  0, maxVelocity - possibleStraightInThisSegment, newLaneIdx
+                )
+                if (possibleInTurnSegment > 0) {
+                  possibleMoves += Move(Turn, newLaneIdx,
+                    possibleStraightInThisSegment + possibleInTurnSegment)
+                }
+              }
+            }
+          }
+          //Turn right
+          if (vac.laneIdx == lanesCount - 1) {
+            val turnPossible = roadDirection match {
+              case NS if turnSegment.roadDirection == EW => true
+              case SN if turnSegment.roadDirection == WE => true
+              case EW if turnSegment.roadDirection == SN => true
+              case WE if turnSegment.roadDirection == NS => true
+              case _ => false
+            }
+            if (turnPossible) {
+              for (newLaneIdx <- 0 until lanesCount) {
+                val possibleInTurnSegment = turnSegment.getMaxPossibleCellsInLane(
+                  0, maxVelocity - possibleStraightInThisSegment, newLaneIdx
+                )
+                if (possibleInTurnSegment > 0) {
+                  possibleMoves += Move(Turn, newLaneIdx,
+                    possibleStraightInThisSegment + possibleInTurnSegment)
+                }
+              }
+            }
+          }
+        }
+        // else wait on red light
+      case _ =>
     }
 
     possibleMoves.toList
@@ -280,6 +278,7 @@ class RoadSegment(val roadId: RoadId,
           case NextAreaRoadSegment(_, actor) =>
             val messageContents = (actor, roadId, vac.copy(laneIdx = newLaneIdx, cellIdx = newCellIdx))
             vehiclesAndCoordinatesOutOfArea += messageContents
+          case _ =>
         }
       } else {
         lanes(newLaneIdx).cells(newCellIdx).vehicle = Some(vac.vehicle)
@@ -312,7 +311,7 @@ class RoadSegment(val roadId: RoadId,
 
   def findLaneWithAvailableCell(): Int = {
     for (i <- 0 until lanesCount) {
-      if(lanes(i).cells(0).vehicle.isEmpty) {
+      if (lanes(i).cells(0).vehicle.isEmpty) {
         return i
       }
     }
@@ -324,11 +323,11 @@ class RoadSegment(val roadId: RoadId,
 
     for (VehicleAndCoordinates(vehicle, laneIdx, cellIdx) <- incomingTraffic) {
       var laneToPutIdx = laneIdx
-      if(lanes(laneIdx).cells(cellIdx).vehicle.nonEmpty) {
+      if (lanes(laneIdx).cells(cellIdx).vehicle.nonEmpty) {
         laneToPutIdx = findLaneWithAvailableCell()
       }
 
-      if(laneToPutIdx < 0) {
+      if (laneToPutIdx < 0) {
         //FIXME some incoming cars are ignored if no space to put them
         throw new IllegalStateException("Cannot put car. No available space on any lane.")
       }
@@ -337,7 +336,7 @@ class RoadSegment(val roadId: RoadId,
       val cellToPutId = Math.min(cellIdx, availableCells(laneToPutIdx, cellIdx))
       //FIXME sometimes cellToPutId is negative
 
-      if(cellToPutId < 0) {
+      if (cellToPutId < 0) {
         //TODO remove after fixing above
         throw new IllegalStateException("CellToPutID is negative")
       }

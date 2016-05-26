@@ -23,14 +23,21 @@ trait Visualization extends SimpleSwingApplication {
 
   override def startup(args: Array[String]): Unit = {
     super.startup(args)
-    //TODO: Read from args
-    x = 0
-    y = 0
+    if (args.length == 2) {
+      try {
+        x = args(0).toInt
+        y = args(1).toInt
+      } catch {
+        case e: NumberFormatException =>
+          x = 0
+          y = 0
+      }
+    }
     actor ! Init(x, y)
   }
 
   override def top: Frame = new MainFrame {
-    title = "Traffic Simulation Visualization"
+    title = s"Traffic Simulation Visualization: Area ($x, $y)"
     contents = canvas
 
     override def closeOperation(): Unit = {
