@@ -8,7 +8,7 @@ import miss.trafficsimulation.traffic._
 
 import scala.collection.mutable.ListBuffer
 
-case class Road(id: RoadId, direction: RoadDirection, elems: List[RoadElem])
+case class Road(id: RoadId, direction: RoadDirection, elems: List[RoadElem], prevAreaActorRef: ActorRef)
 
 case class RoadId(id: Int)
 
@@ -300,16 +300,16 @@ class RoadSegment(val roadId: RoadId,
     }
   }
 
-  def availableCells(laneIdx: Int, limit: Int): Int = {
+  def availableCells(laneIdx: Int, limit: Int = laneLength): Int = {
     val cells = lanes(laneIdx).cells
-    for (i <- 0 to limit) {
+    for (i <- 0 until limit) {
       if (cells(i).vehicle.isDefined)
-        return i - 1
+        return i
     }
     limit
   }
 
-  def findLaneWithAvailableCell(): Int = {
+  private def findLaneWithAvailableCell(): Int = {
     for (i <- 0 until lanesCount) {
       if (lanes(i).cells(0).vehicle.isEmpty) {
         return i
@@ -333,7 +333,7 @@ class RoadSegment(val roadId: RoadId,
       }
 
       val vehicleToPut = Car(VehicleIdGenerator.nextId, vehicle.maxVelocity, vehicle.maxAcceleration, vehicle.color, incomingTrafficTimeFrame, vehicle.currentVelocity, vehicle.currentAcceleration)
-      val cellToPutId = Math.min(cellIdx, availableCells(laneToPutIdx, cellIdx))
+      val cellToPutId = Math.min(cellIdx, availableCells(laneToPutIdx, cellIdx + 1) - 1)
       //FIXME sometimes cellToPutId is negative
 
       if (cellToPutId < 0) {

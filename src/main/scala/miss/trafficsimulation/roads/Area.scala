@@ -13,7 +13,7 @@ import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.util.Random
 
-case class AreaRoadDefinition(roadId: RoadId, direction: RoadDirection, outgoingActorRef: ActorRef)
+case class AreaRoadDefinition(roadId: RoadId, direction: RoadDirection, outgoingActorRef: ActorRef, prevAreaActorRef: ActorRef)
 
 class Area(verticalRoadsDefs: List[AreaRoadDefinition],
            horizontalRoadsDefs: List[AreaRoadDefinition],
@@ -46,8 +46,11 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
     (x: Int) => createRoad(verticalRoadsDefs(x), transposedIntersections(x).toList)
   )
 
-  val actorsAndRoadIds: List[(ActorRef, RoadId)] = (horizontalRoadsDefs ++ verticalRoadsDefs)
+  val outgoingActorsAndRoadIds: List[(ActorRef, RoadId)] = (horizontalRoadsDefs ++ verticalRoadsDefs)
     .map((ard: AreaRoadDefinition) => (ard.outgoingActorRef, ard.roadId))
+
+  val prevActorsAndRoadIds: List[(ActorRef, RoadId)] = (horizontalRoadsDefs ++ verticalRoadsDefs)
+    .map((ard: AreaRoadDefinition) => (ard.prevAreaActorRef, ard.roadId))
 
   private val roadsMap = Map((horizontalRoads ++ verticalRoads).map((r: Road) => r.id -> r): _*)
 
@@ -127,7 +130,7 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
     roadElems += lastIntersection
     roadElems += lastSegment
 
-    new Road(roadDef.roadId, roadDef.direction, roadElems.toList)
+    new Road(roadDef.roadId, roadDef.direction, roadElems.toList, roadDef.prevAreaActorRef)
   }
 
   def initTraffic() = {
@@ -318,4 +321,17 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
     msgBuilder.toString
   }
 
+  def getAvailableSpaceInfo: Iterable[(ActorRef, RoadId, List[Int])] = {
+    roadsMap.values.map(road => {
+      (
+        road.prevAreaActorRef,
+        road.id,
+        (road.elems.head match {
+          case firstRoadSeg: RoadSegment =>
+            (0 until firstRoadSeg.lanesCount).map(i => firstRoadSeg.availableCells(i))
+          case _ => throw new ClassCastException
+        }).toList
+        )
+    })
+  }
 }

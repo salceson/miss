@@ -60,7 +60,8 @@ class AreaActor extends FSM[State, Data] {
         throw new RuntimeException("Some cars are missing: " + (beforeCarsCount - outgoingTraffic.size - afterCarsCount))
       }
 
-      val messagesSent = mutable.Map(area.actorsAndRoadIds.map({
+      // sending outgoing traffic
+      val messagesToSend = mutable.Map(area.outgoingActorsAndRoadIds.map({
         case (a: ActorRef, r: RoadId) => (a, r) -> false
       }): _*)
       outgoingTraffic groupBy {
@@ -68,17 +69,27 @@ class AreaActor extends FSM[State, Data] {
       } foreach {
         case ((actorRef, roadId), list) =>
           log.debug(s"Sending to $actorRef; roadId: $roadId; traffic: $list")
-          messagesSent((actorRef, roadId)) = true
+          messagesToSend((actorRef, roadId)) = true
           actorRef ! OutgoingTrafficInfo(roadId, area.currentTimeFrame, list map {
             case (_, _, vac) => vac
           })
       }
-      messagesSent foreach {
+      messagesToSend foreach {
         case ((actorRef, roadId), false) =>
           log.debug(s"Sending to $actorRef; roadId: $roadId; traffic: No traffic")
           actorRef ! OutgoingTrafficInfo(roadId, area.currentTimeFrame, List())
         case _ =>
       }
+
+      // sending available road space info
+      val availableRoadSpaceInfoList = area.getAvailableSpaceInfo
+      availableRoadSpaceInfoList foreach {
+        case ((actorRef, roadId, list)) =>
+          log.debug(s"Sending to $actorRef; roadId: $roadId; available space: $list")
+          actorRef ! AvailableRoadspaceInfo(roadId, area.currentTimeFrame, list)
+        case _ =>
+      }
+
       if (area.isReadyForComputation()) {
         self ! ReadyForComputation(area.currentTimeFrame)
       }
@@ -90,6 +101,8 @@ class AreaActor extends FSM[State, Data] {
           area.currentTimeFrame)
       }
       goto(Simulating) using data
+    case Event(msg@ReadyForComputation(timeFrame), AreaData(area, _, _, _, _)) if area.currentTimeFrame != timeFrame =>
+      stay
     case Event(VisualizationStartRequest(visualizer), ad: AreaData) =>
       goto(Simulating) using ad.copy(visualizer = Some(visualizer))
     case Event(VisualizationStopRequest(_), ad: AreaData) =>
