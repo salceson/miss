@@ -3,14 +3,14 @@ package miss.cityvisualization
 import java.awt.Dimension
 
 import scala.Array.ofDim
-import scala.swing.{BoxPanel, GridPanel, Label, Orientation}
+import scala.swing.{BoxPanel, GridBagPanel, GridPanel, Label, Orientation}
 
 class CityTable(rows: Int, cols: Int) extends GridPanel(rows, cols) {
-  val cells = ofDim[CityCell](rows, cols)
+  val cells = ofDim[CityCellWrapper](rows, cols)
 
   for (i <- 0 until rows) {
     for (j <- 0 until cols) {
-      cells(i)(j) = new CityCell(i, j)
+      cells(i)(j) = new CityCellWrapper(i, j)
     }
   }
 
@@ -20,6 +20,16 @@ class CityTable(rows: Int, cols: Int) extends GridPanel(rows, cols) {
 
   def updateTimeFrame(row: Int, col: Int, newTimeFrame: Long): Unit = {
     cells(row)(col).updateTimeFrame(newTimeFrame)
+  }
+}
+
+class CityCellWrapper(val x: Int, val y: Int) extends GridBagPanel {
+  val cityCell = new CityCell(x, y)
+  _contents += cityCell
+  visible = true
+
+  def updateTimeFrame(newTimeFrame: Long): Unit = {
+    cityCell.updateTimeFrame(newTimeFrame)
   }
 }
 
