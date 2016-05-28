@@ -2,7 +2,7 @@ package miss.trafficsimulation.roads
 
 import akka.actor.ActorRef
 import com.typesafe.config.Config
-import miss.trafficsimulation.actors.AreaActor.OutgoingTrafficInfo
+import miss.trafficsimulation.actors.AreaActor.{AvailableRoadspaceInfo, OutgoingTrafficInfo}
 import miss.trafficsimulation.roads.LightsDirection.{Horizontal, LightsDirection, Vertical}
 import miss.trafficsimulation.roads.RoadDirection.{NS, RoadDirection, SN}
 import miss.trafficsimulation.traffic.{Car, VehicleIdGenerator}
@@ -119,8 +119,9 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
 
     //last segment
     val lastIntersection = orderedIntersections.last
+    val nextAreaRoadSegment = NextAreaRoadSegment(roadDef.roadId, roadDef.outgoingActorRef, lanesNum)
     val lastSegment = new RoadSegment(roadDef.roadId, lanesNum,
-      (roadSegmentsLength * 0.5).toInt, Some(lastIntersection), NextAreaRoadSegment(roadDef.roadId, roadDef.outgoingActorRef),
+      (roadSegmentsLength * 0.5).toInt, Some(lastIntersection), nextAreaRoadSegment,
       roadDef.direction, maxVelocity, maxAcceleration)
     if (horizontal) {
       lastIntersection.horizontalRoadOut = lastSegment
@@ -130,7 +131,7 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
     roadElems += lastIntersection
     roadElems += lastSegment
 
-    new Road(roadDef.roadId, roadDef.direction, roadElems.toList, roadDef.prevAreaActorRef)
+    new Road(roadDef.roadId, roadDef.direction, roadElems.toList, roadDef.prevAreaActorRef, nextAreaRoadSegment)
   }
 
   def initTraffic() = {
@@ -252,6 +253,11 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
         case _ => throw new ClassCastException
       }
     }
+  }
+
+  def updateNeighboursAvailableRoadspace(msg: AvailableRoadspaceInfo): Unit = {
+    val road = roadsMap(msg.roadId)
+    road.nextAreaRoadSegment.update(msg.timeframe, msg.availableSpacePerLane)
   }
 
   def countCars(): Int = {

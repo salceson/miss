@@ -6,15 +6,55 @@ import miss.trafficsimulation.roads.RoadDirection.{EW, NS, RoadDirection, SN, WE
 import miss.trafficsimulation.traffic.MoveDirection.{GoStraight, SwitchLaneLeft, SwitchLaneRight, Turn}
 import miss.trafficsimulation.traffic._
 
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-case class Road(id: RoadId, direction: RoadDirection, elems: List[RoadElem], prevAreaActorRef: ActorRef)
+case class Road(id: RoadId, direction: RoadDirection, elems: List[RoadElem], prevAreaActorRef: ActorRef, nextAreaRoadSegment: NextAreaRoadSegment)
 
 case class RoadId(id: Int)
 
 sealed trait RoadElem
 
-case class NextAreaRoadSegment(roadId: RoadId, actor: ActorRef) extends RoadElem
+case class NextAreaRoadSegment(roadId: RoadId, actor: ActorRef, lanesCount: Int) extends RoadElem {
+  private val carsSentSinceUpdate: ListBuffer[Int] = ListBuffer.fill(lanesCount)(0)
+  private var availableSpacePerLane: List[Int] = List.fill(lanesCount)(0)
+  private var lastUpdateTimeFrame: Long = -1
+  private var sentCarsQueue = mutable.Queue[SentCarInfo]()
+
+  private[roads] def canSendCar(laneIdx: Int): Boolean = availableSpacePerLane(laneIdx) - carsSentSinceUpdate(laneIdx) > 0
+
+  private[roads] def sendCar(timeFrame: Long, laneIdx: Int): Unit = {
+    if (!canSendCar(laneIdx)) {
+      throw new IllegalStateException(s"Cannot send car to lane: $laneIdx; no space available")
+    }
+
+    carsSentSinceUpdate(laneIdx) += 1
+    sentCarsQueue += SentCarInfo(timeFrame, laneIdx)
+  }
+
+  private[roads] def update(timeFrame: Long, availableSpacePerLane: List[Int]): Unit = {
+    if (timeFrame < lastUpdateTimeFrame) {
+      // ignore if we have already more recent information
+      return
+    }
+
+    var sentCarInfoOption: Option[SentCarInfo] = None
+    do {
+      sentCarInfoOption = sentCarsQueue.dequeueFirst(_.timeFrame < timeFrame)
+
+      if (sentCarInfoOption.isDefined) {
+        carsSentSinceUpdate(sentCarInfoOption.get.laneIdx) -= 1
+      }
+
+    } while (sentCarInfoOption.isDefined)
+
+    lastUpdateTimeFrame = timeFrame
+    this.availableSpacePerLane = availableSpacePerLane
+  }
+
+  private case class SentCarInfo(timeFrame: Long, laneIdx: Int)
+
+}
 
 class Intersection extends RoadElem with Serializable {
   var horizontalRoadIn: RoadSegment = null
@@ -162,8 +202,13 @@ class RoadSegment(val roadId: RoadId,
     if (possibleStraightInThisSegment < distanceBeforeSegmentEnd) {
       possibleMoves += Move(GoStraight, vac.laneIdx, possibleStraightInThisSegment)
     } else out match {
-      case _: NextAreaRoadSegment =>
-        possibleMoves += Move(GoStraight, vac.laneIdx, maxVelocity) //TODO calculate available cells, temporarily using maxVelocity
+      case nextAreaRoadSegment: NextAreaRoadSegment =>
+        if(nextAreaRoadSegment.canSendCar(vac.laneIdx)) {
+          possibleMoves += Move(GoStraight, vac.laneIdx, maxVelocity) //TODO calculate available cells, temporarily using maxVelocity
+        }
+        else {
+          possibleMoves += Move(GoStraight, vac.laneIdx, possibleStraightInThisSegment) //TODO check
+        }
       case intersection: Intersection =>
         if (areLightsRed(lightsDirection) && distanceBeforeSegmentEnd > 0) {
           possibleMoves +=
@@ -223,7 +268,7 @@ class RoadSegment(val roadId: RoadId,
             }
           }
         }
-        // else wait on red light
+      // else wait on red light
       case _ =>
     }
 
@@ -275,7 +320,8 @@ class RoadSegment(val roadId: RoadId,
               case Turn => i.turnRoadSegment(this)
             }
             nextRoadSegment.lanes(newLaneIdx).cells(newCellIdx).vehicle = Some(vac.vehicle)
-          case NextAreaRoadSegment(_, actor) =>
+          case nars@NextAreaRoadSegment(_, actor, _) =>
+            nars.sendCar(timeFrame, newLaneIdx)
             val messageContents = (actor, roadId, vac.copy(laneIdx = newLaneIdx, cellIdx = newCellIdx))
             vehiclesAndCoordinatesOutOfArea += messageContents
           case _ =>
@@ -323,7 +369,7 @@ class RoadSegment(val roadId: RoadId,
 
     for (VehicleAndCoordinates(vehicle, laneIdx, cellIdx) <- incomingTraffic) {
       var laneToPutIdx = laneIdx
-      if (lanes(laneIdx).cells(cellIdx).vehicle.nonEmpty) {
+      if (lanes(laneIdx).cells(0).vehicle.nonEmpty) {
         laneToPutIdx = findLaneWithAvailableCell()
       }
 
@@ -333,7 +379,7 @@ class RoadSegment(val roadId: RoadId,
       }
 
       val vehicleToPut = Car(VehicleIdGenerator.nextId, vehicle.maxVelocity, vehicle.maxAcceleration, vehicle.color, incomingTrafficTimeFrame, vehicle.currentVelocity, vehicle.currentAcceleration)
-      val cellToPutId = Math.min(cellIdx, availableCells(laneToPutIdx, cellIdx + 1) - 1)
+      val cellToPutId = availableCells(laneToPutIdx, maxVelocity + 1) - 1
       //FIXME sometimes cellToPutId is negative
 
       if (cellToPutId < 0) {

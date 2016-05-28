@@ -38,6 +38,11 @@ class AreaActor extends FSM[State, Data] {
         self ! ReadyForComputation(area.currentTimeFrame)
       }
       stay
+    case Event(msg@AvailableRoadspaceInfo(roadId, timeFrame, availableSpacePerLane), d: AreaData) =>
+      val area = d.area
+      log.debug(s"Got $msg")
+      area.updateNeighboursAvailableRoadspace(msg)
+      stay
     case Event(msg@ReadyForComputation(timeFrame), data@AreaData(area, visualizer, x, y, supervisor)) if area.currentTimeFrame == timeFrame =>
       log.info(s"Time frame: $timeFrame")
       log.debug(s"Got $msg")
@@ -61,7 +66,7 @@ class AreaActor extends FSM[State, Data] {
       }
 
       // sending outgoing traffic
-      val messagesToSend = mutable.Map(area.outgoingActorsAndRoadIds.map({
+      val messagesSent = mutable.Map(area.outgoingActorsAndRoadIds.map({
         case (a: ActorRef, r: RoadId) => (a, r) -> false
       }): _*)
       outgoingTraffic groupBy {
@@ -69,12 +74,12 @@ class AreaActor extends FSM[State, Data] {
       } foreach {
         case ((actorRef, roadId), list) =>
           log.debug(s"Sending to $actorRef; roadId: $roadId; traffic: $list")
-          messagesToSend((actorRef, roadId)) = true
+          messagesSent((actorRef, roadId)) = true
           actorRef ! OutgoingTrafficInfo(roadId, area.currentTimeFrame, list map {
             case (_, _, vac) => vac
           })
       }
-      messagesToSend foreach {
+      messagesSent foreach {
         case ((actorRef, roadId), false) =>
           log.debug(s"Sending to $actorRef; roadId: $roadId; traffic: No traffic")
           actorRef ! OutgoingTrafficInfo(roadId, area.currentTimeFrame, List())
@@ -82,13 +87,7 @@ class AreaActor extends FSM[State, Data] {
       }
 
       // sending available road space info
-      val availableRoadSpaceInfoList = area.getAvailableSpaceInfo
-      availableRoadSpaceInfoList foreach {
-        case ((actorRef, roadId, list)) =>
-          log.debug(s"Sending to $actorRef; roadId: $roadId; available space: $list")
-          actorRef ! AvailableRoadspaceInfo(roadId, area.currentTimeFrame, list)
-        case _ =>
-      }
+      sendAvailableRoadSpaceInfo(area)
 
       if (area.isReadyForComputation()) {
         self ! ReadyForComputation(area.currentTimeFrame)
@@ -107,6 +106,16 @@ class AreaActor extends FSM[State, Data] {
       goto(Simulating) using ad.copy(visualizer = Some(visualizer))
     case Event(VisualizationStopRequest(_), ad: AreaData) =>
       goto(Simulating) using ad.copy(visualizer = None)
+  }
+
+  def sendAvailableRoadSpaceInfo(area: Area) = {
+    val availableRoadSpaceInfoList = area.getAvailableSpaceInfo
+    availableRoadSpaceInfoList foreach {
+      case ((actorRef, roadId, list)) =>
+        log.debug(s"Sending to $actorRef; roadId: $roadId; available space: $list")
+        actorRef ! AvailableRoadspaceInfo(roadId, area.currentTimeFrame, list)
+      case _ =>
+    }
   }
 }
 

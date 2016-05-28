@@ -83,7 +83,7 @@ class Supervisor(config: Config) extends Actor {
 
           for (vertRoad <- (j * size) until (j * size + size)) {
             val prevAreaActor = if (i == 0) verticalBoundaryActors(j) else actors(i - 1)(j)
-            val nextAreaActor = if (i == size - 1) verticalBoundaryActors(j) else actors(i + 1)(j)
+            val nextAreaActor = if (i == rows - 1) verticalBoundaryActors(j) else actors(i + 1)(j)
 
             val roadDefinition = verticalRoadDefs(vertRoad)
             roadDefinition.direction match {
@@ -98,7 +98,7 @@ class Supervisor(config: Config) extends Actor {
 
           for (horRoad <- (i * size) until (i * size + size)) {
             val prevAreaActor = if (j == 0) horizontalBoundaryActors(i) else actors(i)(j - 1)
-            val nextAreaActor = if (j == size - 1) horizontalBoundaryActors(i) else actors(i)(j + 1)
+            val nextAreaActor = if (j == cols - 1) horizontalBoundaryActors(i) else actors(i)(j + 1)
 
             val roadDefinition = horizontalRoadDefs(horRoad)
             roadDefinition.direction match {
