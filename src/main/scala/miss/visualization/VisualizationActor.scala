@@ -16,7 +16,7 @@ class VisualizationActor(canvas: Canvas) extends Actor with ActorLogging {
     case Init(x, y) =>
       supervisor ! StartVisualization(x, y)
     case ts@TrafficState(horizontalRoads, verticalRoads, intersectionGreenLightsDirection, timeFrame) =>
-      log.info("got TrafficState:\n" + ts + "\n")
+      log.debug("Got TrafficState:\n" + ts + "\n")
       canvas.updateTraffic(horizontalRoads, verticalRoads, intersectionGreenLightsDirection)
     case Exit(x, y) =>
       supervisor ! StopVisualization(x, y)
