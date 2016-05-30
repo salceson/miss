@@ -115,7 +115,7 @@ class CityCell(val x: Int,
   val fpsLabel = new Label()
   var lastUpdated = new Date
 
-  contents ++= Seq(coordsText, timeFrameText, fpsLabel, timeFrameText)
+  contents ++= Seq(coordsText, timeFrameText, fpsLabel, button)
   visible = true
 
   updateSpeedLabel(0)
