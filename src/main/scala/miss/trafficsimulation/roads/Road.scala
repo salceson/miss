@@ -179,7 +179,7 @@ class RoadSegment(val roadId: RoadId,
     }
 
     //switch lanes not supported on initial part of firstRoadSegment
-    if(in.isDefined || vac.cellIdx > maxVelocity) {
+    if(1==1) {
       //Switch lane left
       if (vac.laneIdx > 0) {
         val maxPossibleCellsSwitchLaneLeft = getMaxPossibleCellsInLane(
