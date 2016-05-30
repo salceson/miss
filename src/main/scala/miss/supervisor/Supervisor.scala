@@ -82,22 +82,32 @@ class Supervisor(config: Config) extends Actor {
           val areaHorizontalRoadDefs = ListBuffer[AreaRoadDefinition]()
 
           for (vertRoad <- (j * size) until (j * size + size)) {
-            if (i == 0) {
-              areaVerticalRoadDefs +=
-                verticalRoadDefs(vertRoad).toAreaRoadDefinition(verticalBoundaryActors(j))
-            } else {
-              areaVerticalRoadDefs +=
-                verticalRoadDefs(vertRoad).toAreaRoadDefinition(actors(i - 1)(j))
+            val prevAreaActor = if (i == 0) verticalBoundaryActors(j) else actors(i - 1)(j)
+            val nextAreaActor = if (i == rows - 1) verticalBoundaryActors(j) else actors(i + 1)(j)
+
+            val roadDefinition = verticalRoadDefs(vertRoad)
+            roadDefinition.direction match {
+              case RoadDirection.NS =>
+                areaVerticalRoadDefs += roadDefinition.toAreaRoadDefinition(nextAreaActor, prevAreaActor)
+              case RoadDirection.SN =>
+                areaVerticalRoadDefs += roadDefinition.toAreaRoadDefinition(prevAreaActor, nextAreaActor)
+              case _ =>
+                throw new IllegalStateException("Illegal direction of vertical road: " + roadDefinition.direction)
             }
           }
 
           for (horRoad <- (i * size) until (i * size + size)) {
-            if (j == 0) {
-              areaHorizontalRoadDefs +=
-                horizontalRoadDefs(horRoad).toAreaRoadDefinition(horizontalBoundaryActors(i))
-            } else {
-              areaHorizontalRoadDefs +=
-                horizontalRoadDefs(horRoad).toAreaRoadDefinition(actors(i)(j - 1))
+            val prevAreaActor = if (j == 0) horizontalBoundaryActors(i) else actors(i)(j - 1)
+            val nextAreaActor = if (j == cols - 1) horizontalBoundaryActors(i) else actors(i)(j + 1)
+
+            val roadDefinition = horizontalRoadDefs(horRoad)
+            roadDefinition.direction match {
+              case RoadDirection.EW =>
+                areaHorizontalRoadDefs += roadDefinition.toAreaRoadDefinition(prevAreaActor, nextAreaActor)
+              case RoadDirection.WE =>
+                areaHorizontalRoadDefs += roadDefinition.toAreaRoadDefinition(nextAreaActor, prevAreaActor)
+              case _ =>
+                throw new IllegalStateException("Illegal direction of horizontal road: " + roadDefinition.direction)
             }
           }
 
@@ -138,6 +148,6 @@ object Supervisor {
 }
 
 case class RoadDefinition(roadId: RoadId, direction: RoadDirection) {
-  def toAreaRoadDefinition(actorRef: ActorRef): AreaRoadDefinition =
-    AreaRoadDefinition(roadId, direction, actorRef)
+  def toAreaRoadDefinition(outgoingActorRef: ActorRef, prevAreaActorRef: ActorRef): AreaRoadDefinition =
+    AreaRoadDefinition(roadId, direction, outgoingActorRef, prevAreaActorRef)
 }

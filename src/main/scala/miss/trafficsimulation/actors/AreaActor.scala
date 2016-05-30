@@ -3,7 +3,7 @@ package miss.trafficsimulation.actors
 import akka.actor.{ActorRef, FSM}
 import miss.supervisor.Supervisor
 import miss.trafficsimulation.actors.AreaActor.{Data, State}
-import miss.trafficsimulation.roads.{Area, AreaRoadDefinition, RoadId, VehicleAndCoordinates}
+import miss.trafficsimulation.roads._
 import miss.visualization.VisualizationActor.TrafficState
 
 import scala.collection.mutable
@@ -25,6 +25,8 @@ class AreaActor extends FSM[State, Data] {
       log.info(s"Actor ($x, $y) starting simulation...")
       val area = new Area(verticalRoadsDefs, horizontalRoadsDefs, config)
       Thread.sleep(initialTimeout) // This is to avoid sending messages to uninitialized actors
+      // sending initial available road space info
+      sendAvailableRoadSpaceInfo(area)
       self ! ReadyForComputation(0)
       goto(Simulating) using AreaData(area, None, x, y, supervisor)
   }
@@ -33,10 +35,16 @@ class AreaActor extends FSM[State, Data] {
     case Event(msg@OutgoingTrafficInfo(roadId, timeFrame, outgoingTraffic), d: AreaData) =>
       val area = d.area
       log.debug(s"Got $msg")
-      area.putIncomingTraffic(msg)
+      val updatedRoads = area.putIncomingTraffic(msg)
+      sendAvailableRoadSpaceInfo(area, updatedRoads)
       if (area.isReadyForComputation()) {
         self ! ReadyForComputation(area.currentTimeFrame)
       }
+      stay
+    case Event(msg@AvailableRoadspaceInfo(roadId, timeFrame, availableSpacePerLane), d: AreaData) =>
+      val area = d.area
+      log.debug(s"Got $msg")
+      area.updateNeighboursAvailableRoadspace(msg)
       stay
     case Event(msg@ReadyForComputation(timeFrame), data@AreaData(area, visualizer, x, y, supervisor)) if area.currentTimeFrame == timeFrame =>
       log.info(s"Time frame: $timeFrame")
@@ -60,7 +68,8 @@ class AreaActor extends FSM[State, Data] {
         throw new RuntimeException("Some cars are missing: " + (beforeCarsCount - outgoingTraffic.size - afterCarsCount))
       }
 
-      val messagesSent = mutable.Map(area.actorsAndRoadIds.map({
+      // sending outgoing traffic
+      val messagesSent = mutable.Map(area.outgoingActorsAndRoadIds.map({
         case (a: ActorRef, r: RoadId) => (a, r) -> false
       }): _*)
       outgoingTraffic groupBy {
@@ -79,6 +88,7 @@ class AreaActor extends FSM[State, Data] {
           actorRef ! OutgoingTrafficInfo(roadId, area.currentTimeFrame, List())
         case _ =>
       }
+
       if (area.isReadyForComputation()) {
         self ! ReadyForComputation(area.currentTimeFrame)
       }
@@ -90,6 +100,8 @@ class AreaActor extends FSM[State, Data] {
           area.currentTimeFrame)
       }
       goto(Simulating) using data
+    case Event(msg@ReadyForComputation(timeFrame), AreaData(area, _, _, _, _)) if area.currentTimeFrame != timeFrame =>
+      stay
     case Event(VisualizationStartRequest(visualizer), ad: AreaData) =>
       goto(Simulating) using ad.copy(visualizer = Some(visualizer))
     case Event(VisualizationStopRequest(_), ad: AreaData) =>
@@ -98,6 +110,26 @@ class AreaActor extends FSM[State, Data] {
     // warning is showing because sometimes we send the message to the actor too
     // many times but simulation is handled only if the time frames are the same.
     case Event(_, _) => stay
+  }
+
+  def sendAvailableRoadSpaceInfo(area: Area) = {
+    val availableRoadSpaceInfoList = area.getAvailableSpaceInfo
+    availableRoadSpaceInfoList foreach {
+      case ((actorRef, roadId, list)) =>
+        log.debug(s"Sending to $actorRef; roadId: $roadId; available space: $list")
+        actorRef ! AvailableRoadspaceInfo(roadId, area.currentTimeFrame, list)
+      case _ =>
+    }
+  }
+
+  def sendAvailableRoadSpaceInfo(area: Area, updatedRoads: Map[RoadId, Long] = Map()) = {
+    val availableRoadSpaceInfoList = area.getAvailableSpaceInfo
+    availableRoadSpaceInfoList foreach {
+      case ((actorRef, roadId, list)) if updatedRoads.contains(roadId) =>
+        log.debug(s"Sending to $actorRef; roadId: $roadId; timeframe: ${updatedRoads(roadId)} available space: $list")
+        actorRef ! AvailableRoadspaceInfo(roadId, updatedRoads(roadId), list)
+      case _ =>
+    }
   }
 }
 

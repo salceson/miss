@@ -30,10 +30,10 @@ trait TestRoads {
   val intersection3 = new Intersection
   val intersection4 = new Intersection
 
-  val h0road = new Road(RoadId(1), RoadDirection.EW, List(h00seg, intersection4, h01seg, intersection1, h02seg))
-  val h1road = new Road(RoadId(2), RoadDirection.WE, List(h10seg, intersection2, h11seg, intersection3, h12seg))
-  val v0road = new Road(RoadId(3), RoadDirection.NS, List(v00seg, intersection1, v01seg, intersection2, v02seg))
-  val v1road = new Road(RoadId(4), RoadDirection.SN, List(v10seg, intersection3, v11seg, intersection4, v12seg))
+  val h0road = new Road(RoadId(1), RoadDirection.EW, List(h00seg, intersection4, h01seg, intersection1, h02seg), null, null)
+  val h1road = new Road(RoadId(2), RoadDirection.WE, List(h10seg, intersection2, h11seg, intersection3, h12seg), null, null)
+  val v0road = new Road(RoadId(3), RoadDirection.NS, List(v00seg, intersection1, v01seg, intersection2, v02seg), null, null)
+  val v1road = new Road(RoadId(4), RoadDirection.SN, List(v10seg, intersection3, v11seg, intersection4, v12seg), null, null)
 
   val hRoads = List(h0road, h1road)
   val vRoads = List(v0road, v1road)
