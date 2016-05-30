@@ -237,8 +237,10 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
     true
   }
 
-  def putIncomingTraffic(msg: OutgoingTrafficInfo): Unit = {
+  def putIncomingTraffic(msg: OutgoingTrafficInfo): Map[RoadId, Long] = {
     incomingTrafficQueue += msg
+
+    val updatedRoads = mutable.Map[RoadId, Long]()
 
     while (incomingTrafficQueue.nonEmpty && incomingTrafficQueue.max.timeframe <= currentTimeFrame) {
       val trafficInfo@OutgoingTrafficInfo(roadId, timeFrame, outgoingTraffic) = incomingTrafficQueue.dequeue()
@@ -246,13 +248,15 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
       road.elems.head match {
         case firstRoadSeg: RoadSegment if timeFrame == firstRoadSeg.lastIncomingTrafficTimeFrame + 1 =>
           firstRoadSeg.putTraffic(timeFrame, outgoingTraffic, intersectionGreenLightsDirection)
-        case _: RoadSegment => {
+          updatedRoads.put(road.id, timeFrame)
+        case _: RoadSegment =>
           incomingTrafficQueue += trafficInfo
-          return
-        }
+          return updatedRoads.toMap
         case _ => throw new ClassCastException
       }
     }
+
+    updatedRoads.toMap
   }
 
   def updateNeighboursAvailableRoadspace(msg: AvailableRoadspaceInfo): Unit = {
@@ -339,5 +343,18 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
         }).toList
         )
     })
+  }
+
+  def getAvailableSpaceInfo(roadId: RoadId): (ActorRef, RoadId, List[Int]) = {
+    val road = roadsMap(roadId)
+    (
+      road.prevAreaActorRef,
+      road.id,
+      (road.elems.head match {
+        case firstRoadSeg: RoadSegment =>
+          (0 until firstRoadSeg.lanesCount).map(i => firstRoadSeg.availableCells(i))
+        case _ => throw new ClassCastException
+      }).toList
+    )
   }
 }

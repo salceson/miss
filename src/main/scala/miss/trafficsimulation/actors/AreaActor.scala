@@ -3,7 +3,7 @@ package miss.trafficsimulation.actors
 import akka.actor.{ActorRef, FSM}
 import miss.supervisor.Supervisor
 import miss.trafficsimulation.actors.AreaActor.{Data, State}
-import miss.trafficsimulation.roads.{Area, AreaRoadDefinition, RoadId, VehicleAndCoordinates}
+import miss.trafficsimulation.roads._
 import miss.visualization.VisualizationActor.TrafficState
 
 import scala.collection.mutable
@@ -25,6 +25,8 @@ class AreaActor extends FSM[State, Data] {
       log.info(s"Actor ($x, $y) starting simulation...")
       val area = new Area(verticalRoadsDefs, horizontalRoadsDefs, config)
       Thread.sleep(initialTimeout) // This is to avoid sending messages to uninitialized actors
+      // sending initial available road space info
+      sendAvailableRoadSpaceInfo(area)
       self ! ReadyForComputation(0)
       goto(Simulating) using AreaData(area, None, x, y, supervisor)
   }
@@ -33,7 +35,8 @@ class AreaActor extends FSM[State, Data] {
     case Event(msg@OutgoingTrafficInfo(roadId, timeFrame, outgoingTraffic), d: AreaData) =>
       val area = d.area
       log.debug(s"Got $msg")
-      area.putIncomingTraffic(msg)
+      val updatedRoads = area.putIncomingTraffic(msg)
+      sendAvailableRoadSpaceInfo(area, updatedRoads)
       if (area.isReadyForComputation()) {
         self ! ReadyForComputation(area.currentTimeFrame)
       }
@@ -86,9 +89,6 @@ class AreaActor extends FSM[State, Data] {
         case _ =>
       }
 
-      // sending available road space info
-      sendAvailableRoadSpaceInfo(area)
-
       if (area.isReadyForComputation()) {
         self ! ReadyForComputation(area.currentTimeFrame)
       }
@@ -114,6 +114,16 @@ class AreaActor extends FSM[State, Data] {
       case ((actorRef, roadId, list)) =>
         log.debug(s"Sending to $actorRef; roadId: $roadId; available space: $list")
         actorRef ! AvailableRoadspaceInfo(roadId, area.currentTimeFrame, list)
+      case _ =>
+    }
+  }
+
+  def sendAvailableRoadSpaceInfo(area: Area, updatedRoads: Map[RoadId, Long] = Map()) = {
+    val availableRoadSpaceInfoList = area.getAvailableSpaceInfo
+    availableRoadSpaceInfoList foreach {
+      case ((actorRef, roadId, list)) if updatedRoads.contains(roadId) =>
+        log.debug(s"Sending to $actorRef; roadId: $roadId; timeframe: ${updatedRoads(roadId)} available space: $list")
+        actorRef ! AvailableRoadspaceInfo(roadId, updatedRoads(roadId), list)
       case _ =>
     }
   }

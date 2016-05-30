@@ -18,10 +18,12 @@ sealed trait RoadElem
 case class NextAreaRoadSegment(roadId: RoadId, actor: ActorRef, lanesCount: Int) extends RoadElem {
   private val carsSentSinceUpdate: ListBuffer[Int] = ListBuffer.fill(lanesCount)(0)
   private var availableSpacePerLane: List[Int] = List.fill(lanesCount)(0)
-  private var lastUpdateTimeFrame: Long = -1
+  private var lastUpdateTimeFrame: Long = 0
   private var sentCarsQueue = mutable.Queue[SentCarInfo]()
 
-  private[roads] def canSendCar(laneIdx: Int): Boolean = availableSpacePerLane(laneIdx) - carsSentSinceUpdate(laneIdx) > 0
+  private[roads] def canSendCar(laneIdx: Int): Boolean = {
+    (availableSpacePerLane(laneIdx) - carsSentSinceUpdate(laneIdx) > 0) && (availableSpacePerLane.sum - carsSentSinceUpdate.sum > 0)
+  }
 
   private[roads] def sendCar(timeFrame: Long, laneIdx: Int): Unit = {
     if (!canSendCar(laneIdx)) {
@@ -40,7 +42,7 @@ case class NextAreaRoadSegment(roadId: RoadId, actor: ActorRef, lanesCount: Int)
 
     var sentCarInfoOption: Option[SentCarInfo] = None
     do {
-      sentCarInfoOption = sentCarsQueue.dequeueFirst(_.timeFrame < timeFrame)
+      sentCarInfoOption = sentCarsQueue.dequeueFirst(_.timeFrame <= timeFrame)
 
       if (sentCarInfoOption.isDefined) {
         carsSentSinceUpdate(sentCarInfoOption.get.laneIdx) -= 1
@@ -50,6 +52,10 @@ case class NextAreaRoadSegment(roadId: RoadId, actor: ActorRef, lanesCount: Int)
 
     lastUpdateTimeFrame = timeFrame
     this.availableSpacePerLane = availableSpacePerLane
+  }
+
+  def getCanSendInfo: List[Int] = {
+    (0 until lanesCount).map(i => availableSpacePerLane(i) - carsSentSinceUpdate(i)).toList
   }
 
   private case class SentCarInfo(timeFrame: Long, laneIdx: Int)
@@ -172,24 +178,26 @@ class RoadSegment(val roadId: RoadId,
       possibleMoves += Move(GoStraight, vac.laneIdx, maxPossibleCellsStraight)
     }
 
-    //Switch lane left
-    if (vac.laneIdx > 0) {
-      val maxPossibleCellsSwitchLaneLeft = getMaxPossibleCellsInLane(
-        vac.cellIdx + 1, vac.cellIdx + maxVelocity + 1, vac.laneIdx - 1)
-      if (maxPossibleCellsSwitchLaneLeft > 0) {
-        possibleMoves += Move(SwitchLaneLeft, vac.laneIdx - 1, maxPossibleCellsSwitchLaneLeft)
+    //switch lanes not supported on initial part of firstRoadSegment
+    if(in.isDefined || vac.cellIdx > maxVelocity) {
+      //Switch lane left
+      if (vac.laneIdx > 0) {
+        val maxPossibleCellsSwitchLaneLeft = getMaxPossibleCellsInLane(
+          vac.cellIdx + 1, vac.cellIdx + maxVelocity + 1, vac.laneIdx - 1)
+        if (maxPossibleCellsSwitchLaneLeft > 0) {
+          possibleMoves += Move(SwitchLaneLeft, vac.laneIdx - 1, maxPossibleCellsSwitchLaneLeft)
+        }
+      }
+
+      //Switch lane right
+      if (vac.laneIdx < lanesCount - 1) {
+        val maxPossibleCellsSwitchLaneRight = getMaxPossibleCellsInLane(
+          vac.cellIdx + 1, vac.cellIdx + maxVelocity + 1, vac.laneIdx + 1)
+        if (maxPossibleCellsSwitchLaneRight > 0) {
+          possibleMoves += Move(SwitchLaneRight, vac.laneIdx + 1, maxPossibleCellsSwitchLaneRight)
+        }
       }
     }
-
-    //Switch lane right
-    if (vac.laneIdx < lanesCount - 1) {
-      val maxPossibleCellsSwitchLaneRight = getMaxPossibleCellsInLane(
-        vac.cellIdx + 1, vac.cellIdx + maxVelocity + 1, vac.laneIdx + 1)
-      if (maxPossibleCellsSwitchLaneRight > 0) {
-        possibleMoves += Move(SwitchLaneRight, vac.laneIdx + 1, maxPossibleCellsSwitchLaneRight)
-      }
-    }
-
     possibleMoves.toList
   }
 
@@ -375,7 +383,7 @@ class RoadSegment(val roadId: RoadId,
 
       if (laneToPutIdx < 0) {
         //FIXME some incoming cars are ignored if no space to put them
-        throw new IllegalStateException("Cannot put car. No available space on any lane.")
+        throw new IllegalStateException(s"Cannot put car. No available space on any lane on road $roadId")
       }
 
       val vehicleToPut = Car(VehicleIdGenerator.nextId, vehicle.maxVelocity, vehicle.maxAcceleration, vehicle.color, incomingTrafficTimeFrame, vehicle.currentVelocity, vehicle.currentAcceleration)
