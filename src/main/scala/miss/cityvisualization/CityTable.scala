@@ -61,7 +61,7 @@ class CityTable(rows: Int,
   contents ++= cells.flatten.toSeq
 
   def updateTimeFrame(x: Int, y: Int, newTimeFrame: Long): Unit = {
-    cells(y)(x).updateTimeFrame(newTimeFrame)
+    cells(x)(y).updateTimeFrame(newTimeFrame)
     wrapper.message()
   }
 }

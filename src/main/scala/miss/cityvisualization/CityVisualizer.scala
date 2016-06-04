@@ -13,7 +13,7 @@ trait CityVisualizer extends SimpleSwingApplication {
   val system = ActorSystem("CityVisualization", config)
   val cols = config.getInt("trafficsimulation.city.cols")
   val rows = config.getInt("trafficsimulation.city.rows")
-  val cityTable = new CityTableWrapper(cols, rows, system)
+  val cityTable = new CityTableWrapper(rows, cols, system)
   val actor = system.actorOf(CityVisualizerActor.props(cityTable.table), "cityViz")
 
   override val top: Frame = new MainFrame {
