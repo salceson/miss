@@ -1,0 +1,19 @@
+package miss.worker
+
+import akka.actor.ActorSystem
+import com.typesafe.config.ConfigFactory
+
+object WorkerApp extends App{
+
+  def startRemoteWorkerSystem() = {
+    val config = ConfigFactory.load("worker")
+    val supervisorHostname = config.getString("supervisor.hostname")
+    val supervisorPath = "akka.tcp://TrafficSimulation@" + supervisorHostname +":6666/user/Supervisor"
+
+    val system = ActorSystem("RemoteWorker", ConfigFactory.load("worker"))
+    val worker = system.actorOf(WorkerActor.props(supervisorPath), "worker")
+    worker ! WorkerActor.Start
+  }
+
+  startRemoteWorkerSystem()
+}
