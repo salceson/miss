@@ -37,10 +37,12 @@ class Supervisor(config: Config) extends FSM[State, Data] {
   }
 
   when(WaitingForWorkers) {
-    case Event(RegisterWorker, w@WorkersData(workers)) =>
-      log.warning(sender().path.address.toString)
+    case Event(RegisterWorker, WorkersData(workers)) =>
+      val senderActor = sender()
 
-      val newWorkers = sender() :: workers
+      log.info(senderActor.path.address.toString)
+
+      val newWorkers = senderActor :: workers
 
       if (allWorkersRegistered(newWorkers)) {
         val areaActors = startSimulation(newWorkers)
@@ -74,19 +76,14 @@ class Supervisor(config: Config) extends FSM[State, Data] {
   }
 
   private def buildWorkersPool(workers: List[ActorRef]): mutable.Queue[Address] = {
-    val workersPool = mutable.Queue[Address]()
+    val list = for {
+      worker <- workers
+      node <- 0 until workerNodesCount
+      core <- 0 until workerCores
+    } yield (worker.path.address, node, core)
 
-    workers.foreach(worker => {
-      val address = worker.path.address
-
-      for (node <- 0 until workerNodesCount) {
-        for (cores <- 0 until workerCores) {
-          workersPool += address
-        }
-      }
-    })
-
-    workersPool
+    val addresses = list map { _._1 }
+    mutable.Queue[Address](addresses: _*)
   }
 
   private def startSimulation(workers: List[ActorRef]): Array[Array[ActorRef]] = {
