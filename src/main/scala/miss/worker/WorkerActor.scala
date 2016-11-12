@@ -1,11 +1,15 @@
 package miss.worker
 
 import akka.actor.{Actor, ActorLogging, Props}
-import miss.supervisor.Supervisor.RegisterWorker
+import miss.supervisor.Supervisor.{RegisterWorker, UnregisterWorker}
+
+import scala.concurrent.duration._
+import scala.language.postfixOps
 
 class WorkerActor(supervisorPath: String) extends Actor with ActorLogging {
 
   import WorkerActor._
+  import context._
 
   val supervisor = context.actorSelection(supervisorPath)
 
@@ -13,9 +17,11 @@ class WorkerActor(supervisorPath: String) extends Actor with ActorLogging {
     case Start =>
       log.info("Sending RegisterWorker to supervisor")
       supervisor ! RegisterWorker
-    case RegisteredAck =>
-      log.info("Registered at supervisor.")
     case Terminate =>
+      log.info("Sending UnregisterWorker to supervisor")
+      supervisor ! UnregisterWorker
+      context.system.scheduler.scheduleOnce(5 seconds, self, TerminateSystem)
+    case TerminateSystem =>
       log.info("Terminating system")
       context.system.terminate()
   }
@@ -26,9 +32,11 @@ object WorkerActor {
 
   // Messages:
   case object Start
-  case object RegisteredAck
+
   case object Terminate
 
-  def props(supervisorPath: String) : Props = Props(classOf[WorkerActor], supervisorPath)
+  case object TerminateSystem
+
+  def props(supervisorPath: String): Props = Props(classOf[WorkerActor], supervisorPath)
 
 }
