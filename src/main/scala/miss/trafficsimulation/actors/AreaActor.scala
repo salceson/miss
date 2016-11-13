@@ -1,6 +1,7 @@
 package miss.trafficsimulation.actors
 
-import akka.actor.{ActorRef, FSM}
+import akka.actor.{ActorRef, FSM, Props}
+import com.typesafe.config.Config
 import miss.supervisor.Supervisor
 import miss.trafficsimulation.actors.AreaActor.{Data, State}
 import miss.trafficsimulation.roads._
@@ -8,12 +9,11 @@ import miss.visualization.VisualizationActor.TrafficState
 
 import scala.collection.mutable
 
-class AreaActor extends FSM[State, Data] {
+class AreaActor(config: Config) extends FSM[State, Data] {
 
   import AreaActor._
-  import Supervisor._
+  import Supervisor.TimeFrameUpdate
 
-  val config = context.system.settings.config
   val timeout = config.getInt("trafficsimulation.visualization.delay")
   val initialTimeout = config.getInt("trafficsimulation.area.initial_delay")
 
@@ -99,13 +99,13 @@ class AreaActor extends FSM[State, Data] {
           area.intersectionGreenLightsDirection,
           area.currentTimeFrame)
       }
-      goto(Simulating) using data
+      stay using data
     case Event(msg@ReadyForComputation(timeFrame), AreaData(area, _, _, _, _)) if area.currentTimeFrame != timeFrame =>
       stay
     case Event(VisualizationStartRequest(visualizer), ad: AreaData) =>
-      goto(Simulating) using ad.copy(visualizer = Some(visualizer))
+      stay using ad.copy(visualizer = Some(visualizer))
     case Event(VisualizationStopRequest(_), ad: AreaData) =>
-      goto(Simulating) using ad.copy(visualizer = None)
+      stay using ad.copy(visualizer = None)
     // The code below is to avoid the unhandled message warning in the console. The
     // warning is showing because sometimes we send the message to the actor too
     // many times but simulation is handled only if the time frames are the same.
@@ -134,6 +134,8 @@ class AreaActor extends FSM[State, Data] {
 }
 
 object AreaActor {
+
+  def props(config: Config): Props = Props(classOf[AreaActor], config)
 
   // Messages:
 
