@@ -99,13 +99,13 @@ class AreaActor(config: Config) extends FSM[State, Data] {
           area.intersectionGreenLightsDirection,
           area.currentTimeFrame)
       }
-      goto(Simulating) using data
+      stay using data
     case Event(msg@ReadyForComputation(timeFrame), AreaData(area, _, _, _, _)) if area.currentTimeFrame != timeFrame =>
       stay
     case Event(VisualizationStartRequest(visualizer), ad: AreaData) =>
-      goto(Simulating) using ad.copy(visualizer = Some(visualizer))
+      stay using ad.copy(visualizer = Some(visualizer))
     case Event(VisualizationStopRequest(_), ad: AreaData) =>
-      goto(Simulating) using ad.copy(visualizer = None)
+      stay using ad.copy(visualizer = None)
     // The code below is to avoid the unhandled message warning in the console. The
     // warning is showing because sometimes we send the message to the actor too
     // many times but simulation is handled only if the time frames are the same.

@@ -57,7 +57,7 @@ class Supervisor(config: Config) extends FSM[State, Data] {
         goto(WarmUp) using SupervisorData(newWorkers, areaActors, None, 0, 0)
       }
       else {
-        goto(WaitingForWorkers) using WorkersData(newWorkers)
+        stay using WorkersData(newWorkers)
       }
   }
 
@@ -65,7 +65,7 @@ class Supervisor(config: Config) extends FSM[State, Data] {
     case Event(TimeFrameUpdate(x, y, newTimeFrame), SupervisorData(workers, areaActors, cityVisualizer, firstComputedFrame, lastComputedFrame)) =>
       cityVisualizer.foreach(ar => ar ! CityVisualizationUpdate(x, y, newTimeFrame))
       val currentTimeFrame = if (newTimeFrame > lastComputedFrame) newTimeFrame else lastComputedFrame
-      goto(WarmUp) using SupervisorData(workers, areaActors, cityVisualizer, firstComputedFrame, currentTimeFrame)
+      stay using SupervisorData(workers, areaActors, cityVisualizer, firstComputedFrame, currentTimeFrame)
     case Event(WarmUpDone, SupervisorData(workers, areaActors, cityVisualizer, firstComputedFrame, lastComputedFrame)) =>
       log.info("Starting simulation phase")
       setTimer("simulation-done-timer", SimulationDone, simulationTimeSeconds seconds)
@@ -82,13 +82,13 @@ class Supervisor(config: Config) extends FSM[State, Data] {
       actors(x)(y) ! VisualizationStopRequest(visualizer)
       stay
     case Event(CityVisualizationStartRequest, SupervisorData(workers, areaActors, _, firstComputedFrame, lastComputedFrame)) =>
-      goto(Working) using SupervisorData(workers, areaActors, Some(sender()), firstComputedFrame, lastComputedFrame)
+      stay using SupervisorData(workers, areaActors, Some(sender()), firstComputedFrame, lastComputedFrame)
     case Event(CityVisualizationStopRequest, SupervisorData(workers, areaActors, _, firstComputedFrame, lastComputedFrame)) =>
-      goto(Working) using SupervisorData(workers, areaActors, None, firstComputedFrame, lastComputedFrame)
+      stay using SupervisorData(workers, areaActors, None, firstComputedFrame, lastComputedFrame)
     case Event(TimeFrameUpdate(x, y, newTimeFrame), SupervisorData(workers, areaActors, cityVisualizer, firstComputedFrame, lastComputedFrame)) =>
       cityVisualizer.foreach(ar => ar ! CityVisualizationUpdate(x, y, newTimeFrame))
       val currentTimeFrame = if (newTimeFrame > lastComputedFrame) newTimeFrame else lastComputedFrame
-      goto(Working) using SupervisorData(workers, areaActors, cityVisualizer, firstComputedFrame, currentTimeFrame)
+      stay using SupervisorData(workers, areaActors, cityVisualizer, firstComputedFrame, currentTimeFrame)
     case Event(SimulationDone, data@SupervisorData(workers, actors, cityVisualizer, firstComputedFrame, lastComputedFrame)) =>
       val simulationFrames = lastComputedFrame - firstComputedFrame
       val fps = simulationFrames / simulationTimeSeconds.toDouble
@@ -102,7 +102,7 @@ class Supervisor(config: Config) extends FSM[State, Data] {
       val senderActor = sender()
       log.info("Removing " + senderActor.toString())
       if (workers.size > 1) {
-        goto(TerminatingWorkers) using SupervisorData(workers.filter(_ != senderActor), areaActors, cityVisualizer, firstComputedFrame, lastComputedFrame)
+        stay using SupervisorData(workers.filter(_ != senderActor), areaActors, cityVisualizer, firstComputedFrame, lastComputedFrame)
       }
       else {
         context.system.terminate
