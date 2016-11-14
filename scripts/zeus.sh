@@ -3,6 +3,8 @@
 #PBS -l nodes=3:ppn=4
 #PBS -l walltime=00:02:00
 
+module load plgrid/tools/java8/oracle/1.8.0
+
 SUPERVISOR_HOSTNAME=`hostname`
 REMOTE_HOSTS=`cat ${PBS_NODEFILE} | uniq | grep -v ${SUPERVISOR_HOSTNAME}`
 
