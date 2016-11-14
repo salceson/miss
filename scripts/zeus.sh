@@ -10,6 +10,8 @@ REMOTE_HOSTS=`cat ${PBS_NODEFILE} | uniq | grep -v ${SUPERVISOR_HOSTNAME}`
 
 java -Dakka.remote.netty.tcp.hostname=${SUPERVISOR_HOSTNAME} \
 -Dtrafficsimulation.time.seconds=20 \
+-Dtrafficsimulation.city.cols=2 \
+-Dtrafficsimulation.city.rows=2 \
 -Dworker.nodes=2 \
 -Dworker.cores=4 \
 -jar supervisor.jar &
