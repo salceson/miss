@@ -6,13 +6,17 @@
 SUPERVISOR_HOSTNAME=`hostname`
 REMOTE_HOSTS=`cat ${PBS_NODEFILE} | uniq | grep -v ${SUPERVISOR_HOSTNAME}`
 
-java -jar supervisor.jar &
-SUPERVISOR_PID=$!
+java -Dakka.remote.netty.tcp.hostname=${SUPERVISOR_HOSTNAME} \
+-Dworker.nodes=2 \
+-Dworker.cores=4 \
+-jar supervisor.jar &
 
 for WORKER_HOST in ${REMOTE_HOSTS}
 do
-    pbsdsh -h ${WORKER_HOST} java -jar worker.jar -Dsupervisor.hostname=${SUPERVISOR_HOSTNAME}
+    pbsdsh -h ${WORKER_HOST} java -Dsupervisor.hostname=${SUPERVISOR_HOSTNAME} \
+    -Dakka.remote.netty.tcp.hostname=${WORKER_HOST} \
+    -jar worker.jar
 done
 
-fg ${SUPERVISOR_PID}
+fg
 exit 0
