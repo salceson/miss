@@ -80,6 +80,10 @@ object CombinedMinMaxMeanVarianceStdDevStatistics {
   def calculate(partialStatistics: List[List[Double]], dataLengths: List[Int]): List[Double] = {
     val n = dataLengths.sum.toDouble
 
+    if (n == 0.0d) {
+      throw new IllegalArgumentException("missing data")
+    }
+
     val min = partialStatistics.map(_(0)).min
     val max = partialStatistics.map(_(1)).max
 
