@@ -23,7 +23,7 @@ object MaxStatistics extends Statistics[Double] {
 object MeanStatistics extends Statistics[Double] {
   override def calculate(data: List[Double]): Double = {
     if (data.isEmpty) {
-      0.0d
+      throw new IllegalArgumentException("missing data")
     } else {
       data.sum / data.length.toDouble
     }
@@ -34,7 +34,7 @@ object MeanStatistics extends Statistics[Double] {
 object VarianceStatistics extends Statistics[Double] {
   override def calculate(data: List[Double]): Double = {
     if (data.isEmpty) {
-      0.0d
+      throw new IllegalArgumentException("missing data")
     } else {
       val mean = MeanStatistics.calculate(data)
       val sum = data.foldLeft(0.0d) { case (total, item) =>
@@ -70,8 +70,8 @@ object MinMaxMeanVarianceStdDevStatistics extends CompoundStatistics {
     StdDevStatistics
   )
 
-  def calculateToString(data: List[Double]): String = {
-    val min :: max :: mean :: variance :: stdDev :: Nil = calculate(data)
+  def statsToString(stats: List[Double]): String = {
+    val min :: max :: mean :: variance :: stdDev :: Nil = stats
     s"Min: $min, Max: $max, Mean: $mean, Variance: $variance, Std Dev: $stdDev"
   }
 }
@@ -104,8 +104,8 @@ object CombinedMinMaxMeanVarianceStdDevStatistics {
     min :: max :: mean :: variance :: stdDev :: Nil
   }
 
-  def calculateToString(partialStatistics: List[List[Double]], dataLengths: List[Int]): String = {
-    val min :: max :: mean :: variance :: stdDev :: Nil = calculate(partialStatistics, dataLengths)
+  def statsToString(stats: List[Double]): String = {
+    val min :: max :: mean :: variance :: stdDev :: Nil = stats
     s"Min: $min, Max: $max, Mean: $mean, Variance: $variance, Std Dev: $stdDev"
   }
 }

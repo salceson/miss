@@ -4,6 +4,7 @@ import akka.actor._
 import akka.remote.RemoteScope
 import com.typesafe.config.Config
 import miss.cityvisualization.CityVisualizerActor
+import miss.statistics.{MinMaxMeanVarianceStdDevStatistics, StatisticsMessage}
 import miss.supervisor.Supervisor.{Data, State}
 import miss.trafficsimulation.actors._
 import miss.trafficsimulation.roads.RoadDirection.RoadDirection
@@ -89,6 +90,11 @@ class Supervisor(config: Config) extends FSM[State, Data] {
       cityVisualizer.foreach(ar => ar ! CityVisualizationUpdate(x, y, newTimeFrame))
       val currentTimeFrame = if (newTimeFrame > lastComputedFrame) newTimeFrame else lastComputedFrame
       stay using SupervisorData(workers, areaActors, cityVisualizer, firstComputedFrame, currentTimeFrame)
+    case Event(StatisticsMessage(stats), _) =>
+      val senderActor = sender()
+      val statsString = MinMaxMeanVarianceStdDevStatistics.statsToString(stats)
+      log.info(s"Got statistics from $senderActor: $statsString")
+      stay
     case Event(SimulationDone, data@SupervisorData(workers, actors, cityVisualizer, firstComputedFrame, lastComputedFrame)) =>
       val simulationFrames = lastComputedFrame - firstComputedFrame
       val fps = simulationFrames / simulationTimeSeconds.toDouble

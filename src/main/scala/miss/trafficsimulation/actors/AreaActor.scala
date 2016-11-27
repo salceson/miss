@@ -2,6 +2,7 @@ package miss.trafficsimulation.actors
 
 import akka.actor.{ActorRef, FSM, Props}
 import com.typesafe.config.Config
+import miss.statistics.{MinMaxMeanVarianceStdDevStatistics, StatisticsMessage}
 import miss.supervisor.Supervisor
 import miss.trafficsimulation.actors.AreaActor.{Data, State}
 import miss.trafficsimulation.roads._
@@ -16,6 +17,7 @@ class AreaActor(config: Config) extends FSM[State, Data] {
 
   val timeout = config.getInt("trafficsimulation.visualization.delay")
   val initialTimeout = config.getInt("trafficsimulation.area.initial_delay")
+  val timeFramesBetweenStatisticsUpdate = config.getInt("trafficsimulation.statistics.time_between_update")
 
   startWith(Initialized, EmptyData)
 
@@ -52,6 +54,12 @@ class AreaActor(config: Config) extends FSM[State, Data] {
       log.info(s"Simulating timeFrame ${area.currentTimeFrame + 1}...")
       // log.debug(area.printVehiclesPos())
       supervisor ! TimeFrameUpdate(x, y, area.currentTimeFrame + 1)
+      if ((area.currentTimeFrame + 1) % timeFramesBetweenStatisticsUpdate == 0) {
+        val vehicles = area.vehicleIterator(timeFrame)
+        val velocities = vehicles.map(_.vehicle.currentVelocity.toDouble).toList
+        val stats = MinMaxMeanVarianceStdDevStatistics.calculate(velocities)
+        supervisor ! StatisticsMessage(stats)
+      }
       val beforeCarsCount = area.countCars()
       log.debug(s"Total cars before simulation: " + beforeCarsCount)
       val outgoingTraffic = area.simulate()

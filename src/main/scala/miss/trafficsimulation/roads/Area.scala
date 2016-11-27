@@ -264,6 +264,33 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
     road.nextAreaRoadSegment.update(msg.timeframe, msg.availableSpacePerLane)
   }
 
+  def vehicleIterator(timeFrame: Long): Iterator[VehicleAndCoordinates] = {
+    val roadSegments = mutable.MutableList[RoadSegment]()
+    for (road <- horizontalRoads) {
+      for (roadElem <- road.elems) {
+        roadElem match {
+          case roadSeg: RoadSegment =>
+            roadSegments += roadSeg
+          case _ =>
+        }
+      }
+    }
+    for (road <- verticalRoads) {
+      for (roadElem <- road.elems) {
+        roadElem match {
+          case roadSeg: RoadSegment =>
+            for (vac <- roadSeg.vehicleIterator()) {
+              roadSegments += roadSeg
+            }
+          case _ =>
+        }
+      }
+    }
+    roadSegments.iterator flatMap {
+      _.vehicleIterator(timeFrame)
+    }
+  }
+
   def countCars(): Int = {
     var carsCounter = 0
     for (road <- horizontalRoads) {
