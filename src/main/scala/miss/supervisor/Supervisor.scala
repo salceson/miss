@@ -9,6 +9,7 @@ import miss.trafficsimulation.actors._
 import miss.trafficsimulation.roads.RoadDirection.RoadDirection
 import miss.trafficsimulation.roads._
 import miss.worker.WorkerActor
+import miss.worker.WorkerActor.RegisterWorkerAck
 
 import scala.Array.ofDim
 import scala.collection.mutable
@@ -45,6 +46,7 @@ class Supervisor(config: Config) extends FSM[State, Data] {
   when(WaitingForWorkers) {
     case Event(RegisterWorker, WorkersData(workers)) =>
       val senderActor = sender()
+      senderActor ! RegisterWorkerAck
 
       log.info(senderActor.path.address.toString)
 
