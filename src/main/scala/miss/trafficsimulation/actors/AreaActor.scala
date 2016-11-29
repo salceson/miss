@@ -47,9 +47,9 @@ class AreaActor(config: Config) extends FSM[State, Data] {
       area.updateNeighboursAvailableRoadspace(msg)
       stay
     case Event(msg@ReadyForComputation(timeFrame), data@AreaData(area, visualizer, x, y, supervisor)) if area.currentTimeFrame == timeFrame =>
-      log.info(s"Time frame: $timeFrame")
+      log.debug(s"Time frame: $timeFrame")
       log.debug(s"Got $msg")
-      log.info(s"Simulating timeFrame ${area.currentTimeFrame + 1}...")
+      log.debug(s"Simulating timeFrame ${area.currentTimeFrame + 1}...")
       // log.debug(area.printVehiclesPos())
       supervisor ! TimeFrameUpdate(x, y, area.currentTimeFrame + 1)
       val beforeCarsCount = area.countCars()
@@ -59,7 +59,7 @@ class AreaActor(config: Config) extends FSM[State, Data] {
       log.debug(s"Total cars after simulation: " + afterCarsCount)
       log.debug(s"Sent cars: " + outgoingTraffic.size)
 
-      log.info(s"Done simulation of timeFrame ${area.currentTimeFrame}")
+      log.debug(s"Done simulation of timeFrame ${area.currentTimeFrame}")
       // log.debug(area.printVehiclesPos())
       log.debug(s"Messages to send: $outgoingTraffic")
 

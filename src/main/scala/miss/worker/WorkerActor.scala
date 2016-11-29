@@ -14,13 +14,13 @@ class WorkerActor(supervisorPath: String, retryIntervalSeconds: Long) extends FS
   import context.dispatcher
 
   val supervisor = context.actorSelection(supervisorPath)
-  context.system.eventStream.subscribe(self, classOf[AssociationErrorEvent])
 
   startWith(Initial, EmptyData)
 
   when(Initial) {
     case Event(Start, _) =>
       log.info("Sending RegisterWorker to supervisor")
+      context.system.eventStream.subscribe(self, classOf[AssociationErrorEvent])
       supervisor ! RegisterWorker
       stay
     case Event(e: AssociationErrorEvent, _) =>
@@ -28,6 +28,7 @@ class WorkerActor(supervisorPath: String, retryIntervalSeconds: Long) extends FS
       stay
     case Event(RegisterWorkerAck, _) =>
       log.info("Connected with Supervisor")
+      context.system.eventStream.unsubscribe(self, classOf[AssociationErrorEvent])
       goto(Working)
   }
 
