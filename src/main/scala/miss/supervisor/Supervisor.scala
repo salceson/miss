@@ -118,9 +118,8 @@ class Supervisor(config: Config) extends FSM[State, Data] {
   private def buildWorkersPool(workers: List[ActorRef]): mutable.Queue[Address] = {
     val list = for {
       worker <- workers
-      node <- 0 until workerNodesCount
       core <- 0 until workerCores
-    } yield (worker.path.address, node, core)
+    } yield (worker.path.address, core)
 
     val addresses = list map {
       _._1
@@ -141,39 +140,45 @@ class Supervisor(config: Config) extends FSM[State, Data] {
     // Create area actors
     for (i <- 0 until rows) {
       for (j <- 0 until cols) {
+        val worker = workersPool.dequeue()
+        log.info(s"starting actor ${i}_$j at ${worker.host.get}:${worker.port.get}")
         actors(i)(j) = context.actorOf(AreaActor.props(config)
-          .withDeploy(Deploy(scope = RemoteScope(workersPool.dequeue()))),
+          .withDeploy(Deploy(scope = RemoteScope(worker))),
           s"AreaActor_${i}_$j")
       }
     }
     // Create horizontal boundary actors
     for (i <- 0 until rows) {
+      val worker = workersPool.dequeue()
+      log.info(s"starting horizontal actor $i at ${worker.host.get}:${worker.port.get}")
       if (i % 2 == 0) {
         horizontalBoundaryActors(i) = context.actorOf(
           BoundaryAreaActor.props(actors(i)(0), actors(i)(cols - 1))
-            .withDeploy(Deploy(scope = RemoteScope(workersPool.dequeue()))),
+            .withDeploy(Deploy(scope = RemoteScope(worker))),
           s"BoundaryActor_horizontal_$i"
         )
       } else {
         horizontalBoundaryActors(i) = context.actorOf(
           BoundaryAreaActor.props(actors(i)(cols - 1), actors(i)(0))
-            .withDeploy(Deploy(scope = RemoteScope(workersPool.dequeue()))),
+            .withDeploy(Deploy(scope = RemoteScope(worker))),
           s"BoundaryActor_horizontal_$i"
         )
       }
     }
     // Create vertical boundary actors
     for (j <- 0 until cols) {
+      val worker = workersPool.dequeue()
+      log.info(s"starting vertical actor $j at ${worker.host.get}:${worker.port.get}")
       if (j % 2 == 0) {
         verticalBoundaryActors(j) = context.actorOf(
           BoundaryAreaActor.props(actors(rows - 1)(j), actors(0)(j))
-            .withDeploy(Deploy(scope = RemoteScope(workersPool.dequeue()))),
+            .withDeploy(Deploy(scope = RemoteScope(worker))),
           s"BoundaryActor_vertical_$j"
         )
       } else {
         verticalBoundaryActors(j) = context.actorOf(
           BoundaryAreaActor.props(actors(0)(j), actors(rows - 1)(j))
-            .withDeploy(Deploy(scope = RemoteScope(workersPool.dequeue()))),
+            .withDeploy(Deploy(scope = RemoteScope(worker))),
           s"BoundaryActor_vertical_$j"
         )
       }
