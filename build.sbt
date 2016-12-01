@@ -1,18 +1,13 @@
-name := "miss-lab"
+name := "trafficsimulation"
 
 version := "1.0"
 
 scalaVersion := "2.11.8"
 
-val AkkaVersion = "2.4.2"
+lazy val common = project in file("common")
 
-resolvers += "scalaz-bintray" at "http://dl.bintray.com/scalaz/releases"
+lazy val supervisor = (project in file("supervisor")) dependsOn common
 
-scalacOptions in Test ++= Seq("-Yrangepos")
+lazy val worker = (project in file("worker")) dependsOn common
 
-libraryDependencies ++= Seq(
-  "com.typesafe.akka" %% "akka-actor" % AkkaVersion,
-  "com.typesafe.akka" %% "akka-remote" % AkkaVersion,
-  "org.specs2" %% "specs2-core" % "3.0" % "test",
-  "org.scala-lang.modules" %% "scala-swing" % "1.0.1"
-)
+lazy val trafficsimulation = (project in file(".")).aggregate(common, supervisor, worker)

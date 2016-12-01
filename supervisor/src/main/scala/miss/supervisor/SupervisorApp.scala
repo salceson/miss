@@ -1,12 +1,11 @@
-package miss
+package miss.supervisor
 
 import akka.actor.ActorSystem
 import com.typesafe.config.{Config, ConfigFactory}
-import miss.supervisor.Supervisor
 
-object Main extends App {
+object SupervisorApp extends App {
 
-  import miss.supervisor.Supervisor.Start
+  import Supervisor.Start
 
   val config = ConfigFactory.load()
   checkEnoughCores(config)
@@ -21,7 +20,7 @@ object Main extends App {
     val nodes = config.getInt("worker.nodes")
     val cores = config.getInt("worker.cores")
 
-    val requiredCores = cols * rows + cols + rows //area actors + boundary actors
+    val requiredCores = cols * rows + cols + rows // area actors + boundary actors
     val totalCores = nodes * cores
 
     if (requiredCores > totalCores) {
