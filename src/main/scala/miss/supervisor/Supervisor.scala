@@ -9,6 +9,7 @@ import miss.trafficsimulation.actors._
 import miss.trafficsimulation.roads.RoadDirection.RoadDirection
 import miss.trafficsimulation.roads._
 import miss.worker.WorkerActor
+import miss.worker.WorkerActor.RegisterWorkerAck
 
 import scala.Array.ofDim
 import scala.collection.mutable
@@ -45,6 +46,7 @@ class Supervisor(config: Config) extends FSM[State, Data] {
   when(WaitingForWorkers) {
     case Event(RegisterWorker, WorkersData(workers)) =>
       val senderActor = sender()
+      senderActor ! RegisterWorkerAck
 
       log.info(senderActor.path.address.toString)
 
@@ -92,7 +94,7 @@ class Supervisor(config: Config) extends FSM[State, Data] {
     case Event(SimulationDone, data@SupervisorData(workers, actors, cityVisualizer, firstComputedFrame, lastComputedFrame)) =>
       val simulationFrames = lastComputedFrame - firstComputedFrame
       val fps = simulationFrames / simulationTimeSeconds.toDouble
-      println(s"Simulation done. Computed frames: $simulationFrames, average FPS: $fps")
+      log.info(s"Simulation done. Computed frames: $simulationFrames, average FPS: $fps")
       workers.foreach(worker => worker ! Terminate)
       goto(TerminatingWorkers) using data
   }
@@ -100,7 +102,7 @@ class Supervisor(config: Config) extends FSM[State, Data] {
   when(TerminatingWorkers) {
     case Event(UnregisterWorker, SupervisorData(workers, areaActors, cityVisualizer, firstComputedFrame, lastComputedFrame)) =>
       val senderActor = sender()
-      log.info("Removing " + senderActor.toString())
+      log.debug("Removing " + senderActor.toString())
       if (workers.size > 1) {
         stay using SupervisorData(workers.filter(_ != senderActor), areaActors, cityVisualizer, firstComputedFrame, lastComputedFrame)
       }
