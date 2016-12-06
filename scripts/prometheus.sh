@@ -2,28 +2,30 @@
 ## Job name
 #SBATCH -J TrafficSim
 ## Number of nodes to allocate
-#SBATCH -N 7
+#SBATCH -N 23
 ## Number of tasks per node (by default number of cores per node to allocate)
 #SBATCH --ntasks-per-node=24
 #SBATCH --mem-per-cpu=1GB
-#SBATCH --time=00:12:00
+#SBATCH --time=00:01:30
 ## Partition
 #SBATCH -p plgrid-testing
-#SBATCH --output="%j.out"
-#SBATCH --error="%j.err"
+#SBATCH --output="results/%j.out"
+#SBATCH --error="results/%j.err"
 
 cd ${SLURM_SUBMIT_DIR}
 
 module add plgrid/tools/java8/1.8.0_60
 
 declare -a PARAMS_LIST
-PARAMS_LIST[0]='COLS=7; ROWS=7; AREA_SIZE=4; TRAFFIC=0.7;  NODES=3; CORES=24'
-PARAMS_LIST[1]='COLS=6; ROWS=6; AREA_SIZE=4; TRAFFIC=0.7;  NODES=2; CORES=24'
-PARAMS_LIST[2]='COLS=5; ROWS=5; AREA_SIZE=4; TRAFFIC=0.7;  NODES=2; CORES=18'
-PARAMS_LIST[3]='COLS=4; ROWS=4; AREA_SIZE=4; TRAFFIC=0.7;  NODES=1; CORES=24'
-PARAMS_LIST[4]='COLS=3; ROWS=3; AREA_SIZE=4; TRAFFIC=0.7;  NODES=1; CORES=15'
-PARAMS_LIST[5]='COLS=2; ROWS=2; AREA_SIZE=4; TRAFFIC=0.7;  NODES=1; CORES=8'
-PARAMS_LIST[6]='COLS=1; ROWS=1; AREA_SIZE=4; TRAFFIC=0.7;  NODES=1; CORES=3'
+#PARAMS_LIST[0]='COLS=4; ROWS=4; AREA_SIZE=4; TRAFFIC=0.7;  NODES=1; CORES=24'
+#PARAMS_LIST[0]='COLS=5; ROWS=5; AREA_SIZE=4; TRAFFIC=0.7;  NODES=2; CORES=24'
+#PARAMS_LIST[0]='COLS=6; ROWS=6; AREA_SIZE=4; TRAFFIC=0.7;  NODES=2; CORES=24'
+#PARAMS_LIST[0]='COLS=7; ROWS=7; AREA_SIZE=4; TRAFFIC=0.7;  NODES=3; CORES=24'
+#PARAMS_LIST[0]='COLS=10; ROWS=10; AREA_SIZE=4; TRAFFIC=0.7;  NODES=5; CORES=24'
+#PARAMS_LIST[0]='COLS=12; ROWS=12; AREA_SIZE=4; TRAFFIC=0.7;  NODES=7; CORES=24'
+#PARAMS_LIST[0]='COLS=16; ROWS=16; AREA_SIZE=4; TRAFFIC=0.7;  NODES=12; CORES=24'
+PARAMS_LIST[0]='COLS=22; ROWS=22; AREA_SIZE=4; TRAFFIC=0.7;  NODES=22; CORES=24'
+#PARAMS_LIST[0]='COLS=30; ROWS=30; AREA_SIZE=4; TRAFFIC=0.7;  NODES=40; CORES=24'
 
 SUPERVISOR_HOSTNAME=`/bin/hostname`
 
@@ -35,6 +37,8 @@ do
     fi
 done
 
+mkdir ${SLURM_SUBMIT_DIR}/results/${SLURM_JOB_ID}
+
 for PARAMS in "${PARAMS_LIST[@]}"
 do
     echo ${PARAMS}
@@ -42,6 +46,7 @@ do
 
     ${JAVA_HOME}/bin/java \
         -Dakka.remote.netty.tcp.hostname=${SUPERVISOR_HOSTNAME} \
+        -Dtrafficsimulation.warmup.seconds=20 \
         -Dtrafficsimulation.time.seconds=20 \
         -Dtrafficsimulation.city.cols=${COLS} \
         -Dtrafficsimulation.city.rows=${ROWS} \
@@ -58,7 +63,10 @@ do
 
     for WORKER_HOST in ${HOSTNAMES[@]:0:${NODES}};
     do
-        srun -w${WORKER_HOST} -l -N1 -n1 ${JAVA_HOME}/bin/java \
+        srun -w${WORKER_HOST} -c${CORES} -N1 -n1 \
+            -o ${SLURM_SUBMIT_DIR}/results/%j/%J.${WORKER_HOST}.out \
+            -e ${SLURM_SUBMIT_DIR}/results/%j/%J.${WORKER_HOST}.err \
+            ${JAVA_HOME}/bin/java \
             -Dsupervisor.hostname=${SUPERVISOR_HOSTNAME} \
             -Dakka.remote.netty.tcp.hostname=${WORKER_HOST} \
             -Dakka.remote.log-remote-lifecycle-events=off \
