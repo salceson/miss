@@ -5,11 +5,11 @@ import akka.remote.RemoteScope
 import com.typesafe.config.Config
 import miss.cityvisualization.CityVisualizerActor
 import miss.supervisor.Supervisor.{Data, State}
+import miss.trafficsimulation.actors.AreaActor.EndWarmUpPhase
 import miss.trafficsimulation.actors._
 import miss.trafficsimulation.roads.RoadDirection.RoadDirection
 import miss.trafficsimulation.roads._
-import miss.worker.WorkerActor
-import miss.worker.WorkerActor.RegisterWorkerAck
+import miss.worker.WorkerActor.{RegisterWorkerAck, Terminate}
 
 import scala.Array.ofDim
 import scala.collection.mutable
@@ -19,10 +19,9 @@ import scala.language.postfixOps
 
 class Supervisor(config: Config) extends FSM[State, Data] {
 
-  import AreaActor.{StartSimulation, VisualizationStartRequest, VisualizationStopRequest}
+  import AreaActor.{EndSimulation, StartSimulation, VisualizationStartRequest, VisualizationStopRequest}
   import CityVisualizerActor._
   import Supervisor._
-  import WorkerActor.Terminate
 
   private val cols = config.getInt("trafficsimulation.city.cols")
   private val rows = config.getInt("trafficsimulation.city.rows")
@@ -56,7 +55,7 @@ class Supervisor(config: Config) extends FSM[State, Data] {
         val areaActors = startSimulation(newWorkers)
         log.info("Starting warm up phase")
         setTimer("warm-up-timer", WarmUpDone, warmUpTimeSeconds seconds)
-        goto(WarmUp) using SupervisorData(newWorkers, areaActors, None, 0, 0)
+        goto(WarmUp) using SupervisorData(newWorkers, areaActors, None)
       }
       else {
         stay using WorkersData(newWorkers)
@@ -64,47 +63,78 @@ class Supervisor(config: Config) extends FSM[State, Data] {
   }
 
   when(WarmUp) {
-    case Event(TimeFrameUpdate(x, y, newTimeFrame), SupervisorData(workers, areaActors, cityVisualizer, firstComputedFrame, lastComputedFrame)) =>
+    case Event(TimeFrameUpdate(x, y, newTimeFrame), SupervisorData(workers, areaActors, cityVisualizer)) =>
+      log.debug(s"Got TimeFrameUpdate from actor $x, $y: frame $newTimeFrame")
       cityVisualizer.foreach(ar => ar ! CityVisualizationUpdate(x, y, newTimeFrame))
-      val currentTimeFrame = if (newTimeFrame > lastComputedFrame) newTimeFrame else lastComputedFrame
-      stay using SupervisorData(workers, areaActors, cityVisualizer, firstComputedFrame, currentTimeFrame)
-    case Event(WarmUpDone, SupervisorData(workers, areaActors, cityVisualizer, firstComputedFrame, lastComputedFrame)) =>
+      stay using SupervisorData(workers, areaActors, cityVisualizer)
+    case Event(WarmUpDone, SupervisorData(workers, areaActors, cityVisualizer)) =>
       log.info("Starting simulation phase")
+      for (i <- 0 until rows) {
+        for (j <- 0 until cols) {
+          val actor = areaActors(i)(j)
+          actor ! EndWarmUpPhase
+        }
+      }
       setTimer("simulation-done-timer", SimulationDone, simulationTimeSeconds seconds)
-      goto(Working) using SupervisorData(workers, areaActors, cityVisualizer, lastComputedFrame, lastComputedFrame)
+      goto(Working) using SupervisorData(workers, areaActors, cityVisualizer)
   }
 
   when(Working) {
-    case Event(StartVisualization(x, y), SupervisorData(_, actors, _, _, _)) =>
+    case Event(StartVisualization(x, y), SupervisorData(_, actors, _)) =>
       val visualizer = sender()
       actors(x)(y) ! VisualizationStartRequest(visualizer)
       stay
-    case Event(StopVisualization(x, y), SupervisorData(_, actors, _, _, _)) =>
+    case Event(StopVisualization(x, y), SupervisorData(_, actors, _)) =>
       val visualizer = sender()
       actors(x)(y) ! VisualizationStopRequest(visualizer)
       stay
-    case Event(CityVisualizationStartRequest, SupervisorData(workers, areaActors, _, firstComputedFrame, lastComputedFrame)) =>
-      stay using SupervisorData(workers, areaActors, Some(sender()), firstComputedFrame, lastComputedFrame)
-    case Event(CityVisualizationStopRequest, SupervisorData(workers, areaActors, _, firstComputedFrame, lastComputedFrame)) =>
-      stay using SupervisorData(workers, areaActors, None, firstComputedFrame, lastComputedFrame)
-    case Event(TimeFrameUpdate(x, y, newTimeFrame), SupervisorData(workers, areaActors, cityVisualizer, firstComputedFrame, lastComputedFrame)) =>
+    case Event(CityVisualizationStartRequest, SupervisorData(workers, areaActors, _)) =>
+      stay using SupervisorData(workers, areaActors, Some(sender()))
+    case Event(CityVisualizationStopRequest, SupervisorData(workers, areaActors, _)) =>
+      stay using SupervisorData(workers, areaActors, None)
+    case Event(TimeFrameUpdate(x, y, newTimeFrame), SupervisorData(workers, areaActors, cityVisualizer)) =>
+      log.info(s"Got TimeFrameUpdate from actor $x, $y: frame $newTimeFrame")
       cityVisualizer.foreach(ar => ar ! CityVisualizationUpdate(x, y, newTimeFrame))
-      val currentTimeFrame = if (newTimeFrame > lastComputedFrame) newTimeFrame else lastComputedFrame
-      stay using SupervisorData(workers, areaActors, cityVisualizer, firstComputedFrame, currentTimeFrame)
-    case Event(SimulationDone, data@SupervisorData(workers, actors, cityVisualizer, firstComputedFrame, lastComputedFrame)) =>
-      val simulationFrames = lastComputedFrame - firstComputedFrame
-      val fps = simulationFrames / simulationTimeSeconds.toDouble
-      log.info(s"Simulation done. Computed frames: $simulationFrames, average FPS: $fps")
+      stay using SupervisorData(workers, areaActors, cityVisualizer)
+    case Event(SimulationDone, SupervisorData(workers, actors, cityVisualizer)) =>
+      val actorsToTerminate = mutable.Set[ActorRef]()
+      for (i <- 0 until rows) {
+        for (j <- 0 until cols) {
+          val actor = actors(i)(j)
+          actor ! EndSimulation
+          actorsToTerminate += actor
+        }
+      }
+      goto(EndingSimulation) using TearDownData(workers, actorsToTerminate.toSet, Map[(Int, Int), Long]())
+  }
+
+  when(EndingSimulation) {
+    case Event(SimulationResult(x, y, computedFrames), data@TearDownData(workers, actorsToTerminate, computedFramesByArea)) if actorsToTerminate.size > 1 =>
+      stay using TearDownData(workers, actorsToTerminate - sender, computedFramesByArea + ((x, y) -> computedFrames))
+    case Event(SimulationResult(x, y, computedFrames), data@TearDownData(workers, actorsToTerminate, computedFramesByArea)) if actorsToTerminate.size == 1 =>
+      computedFramesByArea + ((x, y) -> computedFrames)
+
+      val maxEntry = computedFramesByArea.maxBy(_._2)
+      val minEntry = computedFramesByArea.minBy(_._2)
+
+      val maxFps = maxEntry._2 / simulationTimeSeconds.toDouble
+      val minFps = minEntry._2 / simulationTimeSeconds.toDouble
+      val avgFps = computedFramesByArea.values.sum / computedFramesByArea.values.size.toDouble / simulationTimeSeconds.toDouble
+
+      log.info(s"Max result: $maxEntry")
+      log.info(s"Mix result: $minEntry")
+
+      log.info(s"Simulation done. Computed frames: ${minEntry._2}, min FPS: $minFps, max FPS: $maxFps, avg FPS: $avgFps")
       workers.foreach(worker => worker ! Terminate)
-      goto(TerminatingWorkers) using data
+      goto(TerminatingWorkers) using data.copy(actorsToTerminate = Set())
   }
 
   when(TerminatingWorkers) {
-    case Event(UnregisterWorker, SupervisorData(workers, areaActors, cityVisualizer, firstComputedFrame, lastComputedFrame)) =>
+    case Event(UnregisterWorker, data@TearDownData(workers, _, _)) =>
       val senderActor = sender()
       log.debug("Removing " + senderActor.toString())
       if (workers.size > 1) {
-        stay using SupervisorData(workers.filter(_ != senderActor), areaActors, cityVisualizer, firstComputedFrame, lastComputedFrame)
+        stay using data.copy(workers = workers.filter(_ != senderActor))
       }
       else {
         context.system.terminate
@@ -256,6 +286,8 @@ object Supervisor {
 
   case class TimeFrameUpdate(x: Int, y: Int, newTimeFrame: Long)
 
+  case class SimulationResult(x: Int, y: Int, computedFrames: Long)
+
   case object WarmUpDone
 
   case object SimulationDone
@@ -275,6 +307,8 @@ object Supervisor {
 
   case object Working extends State
 
+  case object EndingSimulation extends State
+
   case object TerminatingWorkers extends State
 
 
@@ -287,10 +321,13 @@ object Supervisor {
 
   case class SupervisorData(workers: List[ActorRef],
                             areaActors: Array[Array[ActorRef]],
-                            cityVisualizer: Option[ActorRef],
-                            firstComputedFrame: Long,
-                            lastComputedFrame: Long
+                            cityVisualizer: Option[ActorRef]
                            ) extends Data
+
+  case class TearDownData(workers: List[ActorRef],
+                          actorsToTerminate: Set[ActorRef],
+                          computedFramesByArea: Map[(Int, Int), Long]
+                         ) extends Data
 
 }
 

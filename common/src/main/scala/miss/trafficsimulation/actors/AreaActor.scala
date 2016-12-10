@@ -12,7 +12,7 @@ import scala.collection.mutable
 class AreaActor(config: Config) extends FSM[State, Data] {
 
   import AreaActor._
-  import Supervisor.TimeFrameUpdate
+  import Supervisor.SimulationResult
 
   val timeout = config.getInt("trafficsimulation.visualization.delay")
   val initialTimeout = config.getInt("trafficsimulation.area.initial_delay")
@@ -28,7 +28,7 @@ class AreaActor(config: Config) extends FSM[State, Data] {
       // sending initial available road space info
       sendAvailableRoadSpaceInfo(area)
       self ! ReadyForComputation(0)
-      goto(Simulating) using AreaData(area, None, x, y, supervisor)
+      goto(Simulating) using AreaData(area, None, x, y, supervisor, 0)
   }
 
   when(Simulating) {
@@ -46,12 +46,11 @@ class AreaActor(config: Config) extends FSM[State, Data] {
       log.debug(s"Got $msg")
       area.updateNeighboursAvailableRoadspace(msg)
       stay
-    case Event(msg@ReadyForComputation(timeFrame), data@AreaData(area, visualizer, x, y, supervisor)) if area.currentTimeFrame == timeFrame =>
+    case Event(msg@ReadyForComputation(timeFrame), data@AreaData(area, visualizer, x, y, supervisor, firstSimulationFrame)) if area.currentTimeFrame == timeFrame =>
       log.debug(s"Time frame: $timeFrame")
       log.debug(s"Got $msg")
-      log.debug(s"Simulating timeFrame ${area.currentTimeFrame + 1}...")
+      log.info(s"Simulating timeFrame ${area.currentTimeFrame + 1}...")
       // log.debug(area.printVehiclesPos())
-      supervisor ! TimeFrameUpdate(x, y, area.currentTimeFrame + 1)
       val beforeCarsCount = area.countCars()
       log.debug(s"Total cars before simulation: " + beforeCarsCount)
       val outgoingTraffic = area.simulate()
@@ -100,8 +99,15 @@ class AreaActor(config: Config) extends FSM[State, Data] {
           area.currentTimeFrame)
       }
       stay using data
-    case Event(msg@ReadyForComputation(timeFrame), AreaData(area, _, _, _, _)) if area.currentTimeFrame != timeFrame =>
+    case Event(msg@ReadyForComputation(timeFrame), AreaData(area, _, _, _, _, _)) if area.currentTimeFrame != timeFrame =>
       stay
+    case Event(EndWarmUpPhase, ad: AreaData) =>
+      stay using ad.copy(firstSimulationFrame = ad.area.currentTimeFrame)
+    case Event(EndSimulation, AreaData(area, visualizer, x, y, supervisor, firstSimulationFrame)) =>
+      val computedFrames = area.currentTimeFrame - firstSimulationFrame
+      supervisor ! SimulationResult(x, y, computedFrames)
+      log.info(s"Simulation result: computed frames: $computedFrames, firstFrame: $firstSimulationFrame")
+      stop
     case Event(VisualizationStartRequest(visualizer), ad: AreaData) =>
       stay using ad.copy(visualizer = Some(visualizer))
     case Event(VisualizationStopRequest(_), ad: AreaData) =>
@@ -144,6 +150,10 @@ object AreaActor {
                              x: Int,
                              y: Int)
 
+  case object EndWarmUpPhase
+
+  case object EndSimulation
+
   case class AvailableRoadspaceInfo(roadId: RoadId,
                                     timeframe: Long,
                                     availableSpacePerLane: List[Int])
@@ -176,7 +186,8 @@ object AreaActor {
                       visualizer: Option[ActorRef],
                       x: Int,
                       y: Int,
-                      supervisor: ActorRef)
+                      supervisor: ActorRef,
+                      firstSimulationFrame: Long)
     extends Data
 
 }
