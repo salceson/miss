@@ -122,7 +122,7 @@ class Supervisor(config: Config) extends FSM[State, Data] {
       val avgFps = computedFramesByArea.values.sum / computedFramesByArea.values.size.toDouble / simulationTimeSeconds.toDouble
 
       log.info(s"Max result: $maxEntry")
-      log.info(s"Mix result: $minEntry")
+      log.info(s"Min result: $minEntry")
 
       log.info(s"Simulation done. Computed frames: ${minEntry._2}, min FPS: $minFps, max FPS: $maxFps, avg FPS: $avgFps")
       workers.foreach(worker => worker ! Terminate)
