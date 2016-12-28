@@ -63,11 +63,11 @@ class Supervisor(config: Config) extends FSM[State, Data] {
   }
 
   when(WarmUp) {
-    case Event(TimeFrameUpdate(x, y, newTimeFrame), SupervisorData(workers, areaActors, cityVisualizer)) =>
+    case Event(TimeFrameUpdate(x, y, newTimeFrame), SupervisorData(_, _, cityVisualizer)) =>
       log.debug(s"Got TimeFrameUpdate from actor $x, $y: frame $newTimeFrame")
       cityVisualizer.foreach(ar => ar ! CityVisualizationUpdate(x, y, newTimeFrame))
-      stay using SupervisorData(workers, areaActors, cityVisualizer)
-    case Event(WarmUpDone, SupervisorData(workers, areaActors, cityVisualizer)) =>
+      stay
+    case Event(WarmUpDone, SupervisorData(_, areaActors, _)) =>
       log.info("Starting simulation phase")
       for (i <- 0 until rows) {
         for (j <- 0 until cols) {
@@ -76,7 +76,7 @@ class Supervisor(config: Config) extends FSM[State, Data] {
         }
       }
       setTimer("simulation-done-timer", SimulationDone, simulationTimeSeconds seconds)
-      goto(Working) using SupervisorData(workers, areaActors, cityVisualizer)
+      goto(Working)
   }
 
   when(Working) {

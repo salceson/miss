@@ -99,7 +99,7 @@ class AreaActor(config: Config) extends FSM[State, Data] {
           area.currentTimeFrame)
       }
       stay using data
-    case Event(msg@ReadyForComputation(timeFrame), AreaData(area, _, _, _, _, _)) if area.currentTimeFrame != timeFrame =>
+    case Event(ReadyForComputation(timeFrame), AreaData(area, _, _, _, _, _)) if area.currentTimeFrame != timeFrame =>
       stay
     case Event(EndWarmUpPhase, ad: AreaData) =>
       stay using ad.copy(firstSimulationFrame = ad.area.currentTimeFrame)
