@@ -1,6 +1,6 @@
 package miss.trafficsimulation.roads
 
-import akka.actor.ActorRef
+import akka.actor.ActorSelection
 import miss.trafficsimulation.roads.LightsDirection.{Horizontal, LightsDirection, Vertical}
 import miss.trafficsimulation.roads.RoadDirection.{EW, NS, RoadDirection, SN, WE}
 import miss.trafficsimulation.traffic.MoveDirection.{GoStraight, SwitchLaneLeft, SwitchLaneRight, Turn}
@@ -9,13 +9,13 @@ import miss.trafficsimulation.traffic._
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-case class Road(id: RoadId, direction: RoadDirection, elems: List[RoadElem], prevAreaActorRef: ActorRef, nextAreaRoadSegment: NextAreaRoadSegment)
+case class Road(id: RoadId, direction: RoadDirection, elems: List[RoadElem], prevAreaActor: ActorSelection, nextAreaRoadSegment: NextAreaRoadSegment)
 
 case class RoadId(id: Int)
 
 sealed trait RoadElem
 
-case class NextAreaRoadSegment(roadId: RoadId, actor: ActorRef, lanesCount: Int) extends RoadElem {
+case class NextAreaRoadSegment(roadId: RoadId, actor: ActorSelection, lanesCount: Int) extends RoadElem {
   private val carsSentSinceUpdate: ListBuffer[Int] = ListBuffer.fill(lanesCount)(0)
   private var availableSpacePerLane: List[Int] = List.fill(lanesCount)(0)
   private var lastUpdateTimeFrame: Long = 0
@@ -179,7 +179,7 @@ class RoadSegment(val roadId: RoadId,
     }
 
     //switch lanes not supported on initial part of firstRoadSegment
-    if(1==1) {
+    if (1 == 1) {
       //Switch lane left
       if (vac.laneIdx > 0) {
         val maxPossibleCellsSwitchLaneLeft = getMaxPossibleCellsInLane(
@@ -211,7 +211,7 @@ class RoadSegment(val roadId: RoadId,
       possibleMoves += Move(GoStraight, vac.laneIdx, possibleStraightInThisSegment)
     } else out match {
       case nextAreaRoadSegment: NextAreaRoadSegment =>
-        if(nextAreaRoadSegment.canSendCar(vac.laneIdx)) {
+        if (nextAreaRoadSegment.canSendCar(vac.laneIdx)) {
           possibleMoves += Move(GoStraight, vac.laneIdx, maxVelocity) //TODO calculate available cells, temporarily using maxVelocity
         }
         else {
@@ -298,8 +298,8 @@ class RoadSegment(val roadId: RoadId,
     Math.min(maxPossible, maxVelocity)
   }
 
-  def simulate(lightsDirection: LightsDirection, timeFrame: Long): List[(ActorRef, RoadId, VehicleAndCoordinates)] = {
-    val vehiclesAndCoordinatesOutOfArea = ListBuffer[(ActorRef, RoadId, VehicleAndCoordinates)]()
+  def simulate(lightsDirection: LightsDirection, timeFrame: Long): List[(ActorSelection, RoadId, VehicleAndCoordinates)] = {
+    val vehiclesAndCoordinatesOutOfArea = ListBuffer[(ActorSelection, RoadId, VehicleAndCoordinates)]()
 
     for (vac <- vehicleIterator(timeFrame - 1)) {
       val move = vac.vehicle.move(calculatePossibleMoves(vac, lightsDirection))
