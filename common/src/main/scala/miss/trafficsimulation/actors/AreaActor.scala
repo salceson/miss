@@ -1,9 +1,10 @@
 package miss.trafficsimulation.actors
 
-import akka.actor.{ActorRef, FSM, Props}
+import akka.actor.{ActorPath, ActorRef, ActorSelection, FSM, Props}
 import com.typesafe.config.Config
 import miss.supervisor.Supervisor
 import miss.trafficsimulation.actors.AreaActor.{Data, State}
+import miss.trafficsimulation.roads.RoadDirection._
 import miss.trafficsimulation.roads._
 import miss.visualization.VisualizationActor.TrafficState
 
@@ -19,11 +20,16 @@ class AreaActor(config: Config) extends FSM[State, Data] {
 
   startWith(Initialized, EmptyData)
 
+  private def resolveActor(actorPath: ActorPath): ActorSelection = this.context.actorSelection(actorPath)
+
   when(Initialized) {
     case Event(StartSimulation(verticalRoadsDefs, horizontalRoadsDefs, x, y), EmptyData) =>
       val supervisor = sender()
       log.info(s"Actor ($x, $y) starting simulation...")
-      val area = new Area(verticalRoadsDefs, horizontalRoadsDefs, config)
+      val verticalRoadsData = verticalRoadsDefs.map(r => AreaRoadData(r.roadId, r.direction, resolveActor(r.outgoingActorPath), resolveActor(r.prevAreaActorPath)))
+      val horizontalRoadsData = horizontalRoadsDefs.map(r => AreaRoadData(r.roadId, r.direction, resolveActor(r.outgoingActorPath), resolveActor(r.prevAreaActorPath)))
+
+      val area = new Area(verticalRoadsData, horizontalRoadsData, config)
       Thread.sleep(initialTimeout) // This is to avoid sending messages to uninitialized actors
       // sending initial available road space info
       sendAvailableRoadSpaceInfo(area)
@@ -69,22 +75,22 @@ class AreaActor(config: Config) extends FSM[State, Data] {
 
       // sending outgoing traffic
       val messagesSent = mutable.Map(area.outgoingActorsAndRoadIds.map({
-        case (a: ActorRef, r: RoadId) => (a, r) -> false
+        case (a: ActorSelection, r: RoadId) => (a, r) -> false
       }): _*)
       outgoingTraffic groupBy {
-        case (actorRef, roadId, _) => (actorRef, roadId)
+        case (actor, roadId, _) => (actor, roadId)
       } foreach {
-        case ((actorRef, roadId), list) =>
-          log.debug(s"Sending to $actorRef; roadId: $roadId; traffic: $list")
-          messagesSent((actorRef, roadId)) = true
-          actorRef ! OutgoingTrafficInfo(roadId, area.currentTimeFrame, list map {
+        case ((actor, roadId), list) =>
+          log.debug(s"Sending to $actor; roadId: $roadId; traffic: $list")
+          messagesSent((actor, roadId)) = true
+          actor ! OutgoingTrafficInfo(roadId, area.currentTimeFrame, list map {
             case (_, _, vac) => vac
           })
       }
       messagesSent foreach {
-        case ((actorRef, roadId), false) =>
-          log.debug(s"Sending to $actorRef; roadId: $roadId; traffic: No traffic")
-          actorRef ! OutgoingTrafficInfo(roadId, area.currentTimeFrame, List())
+        case ((actor, roadId), false) =>
+          log.debug(s"Sending to $actor; roadId: $roadId; traffic: No traffic")
+          actor ! OutgoingTrafficInfo(roadId, area.currentTimeFrame, List())
         case _ =>
       }
 
@@ -121,9 +127,9 @@ class AreaActor(config: Config) extends FSM[State, Data] {
   def sendAvailableRoadSpaceInfo(area: Area) = {
     val availableRoadSpaceInfoList = area.getAvailableSpaceInfo
     availableRoadSpaceInfoList foreach {
-      case ((actorRef, roadId, list)) =>
-        log.debug(s"Sending to $actorRef; roadId: $roadId; available space: $list")
-        actorRef ! AvailableRoadspaceInfo(roadId, area.currentTimeFrame, list)
+      case ((actor, roadId, list)) =>
+        log.debug(s"Sending to $actor; roadId: $roadId; available space: $list")
+        actor ! AvailableRoadspaceInfo(roadId, area.currentTimeFrame, list)
       case _ =>
     }
   }
@@ -131,9 +137,9 @@ class AreaActor(config: Config) extends FSM[State, Data] {
   def sendAvailableRoadSpaceInfo(area: Area, updatedRoads: Map[RoadId, Long] = Map()) = {
     val availableRoadSpaceInfoList = area.getAvailableSpaceInfo
     availableRoadSpaceInfoList foreach {
-      case ((actorRef, roadId, list)) if updatedRoads.contains(roadId) =>
-        log.debug(s"Sending to $actorRef; roadId: $roadId; timeframe: ${updatedRoads(roadId)} available space: $list")
-        actorRef ! AvailableRoadspaceInfo(roadId, updatedRoads(roadId), list)
+      case ((actor, roadId, list)) if updatedRoads.contains(roadId) =>
+        log.debug(s"Sending to $actor; roadId: $roadId; timeframe: ${updatedRoads(roadId)} available space: $list")
+        actor ! AvailableRoadspaceInfo(roadId, updatedRoads(roadId), list)
       case _ =>
     }
   }
@@ -142,6 +148,8 @@ class AreaActor(config: Config) extends FSM[State, Data] {
 object AreaActor {
 
   def props(config: Config): Props = Props(classOf[AreaActor], config)
+
+  case class AreaRoadDefinition(roadId: RoadId, direction: RoadDirection, outgoingActorPath: ActorPath, prevAreaActorPath: ActorPath)
 
   // Messages:
 
