@@ -5,7 +5,7 @@ import akka.remote.RemoteScope
 import com.typesafe.config.Config
 import miss.cityvisualization.CityVisualizerActor
 import miss.supervisor.Supervisor.{Data, State}
-import miss.trafficsimulation.actors.AreaActor.EndWarmUpPhase
+import miss.trafficsimulation.actors.AreaActor.{AreaRoadDefinition, EndWarmUpPhase}
 import miss.trafficsimulation.actors._
 import miss.trafficsimulation.roads.RoadDirection.RoadDirection
 import miss.trafficsimulation.roads._
@@ -122,7 +122,7 @@ class Supervisor(config: Config) extends FSM[State, Data] {
       val avgFps = computedFramesByArea.values.sum / computedFramesByArea.values.size.toDouble / simulationTimeSeconds.toDouble
 
       log.info(s"Max result: $maxEntry")
-      log.info(s"Mix result: $minEntry")
+      log.info(s"Min result: $minEntry")
 
       log.info(s"Simulation done. Computed frames: ${minEntry._2}, min FPS: $minFps, max FPS: $maxFps, avg FPS: $avgFps")
       workers.foreach(worker => worker ! Terminate)
@@ -333,5 +333,5 @@ object Supervisor {
 
 case class RoadDefinition(roadId: RoadId, direction: RoadDirection) {
   def toAreaRoadDefinition(outgoingActorRef: ActorRef, prevAreaActorRef: ActorRef): AreaRoadDefinition =
-    AreaRoadDefinition(roadId, direction, outgoingActorRef, prevAreaActorRef)
+    AreaRoadDefinition(roadId, direction, outgoingActorRef.path, prevAreaActorRef.path)
 }
