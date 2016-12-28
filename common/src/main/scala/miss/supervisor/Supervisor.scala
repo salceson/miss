@@ -6,7 +6,7 @@ import com.typesafe.config.Config
 import miss.cityvisualization.CityVisualizerActor
 import miss.common.SerializableMessage
 import miss.supervisor.Supervisor.{Data, State}
-import miss.trafficsimulation.actors.AreaActor.EndWarmUpPhase
+import miss.trafficsimulation.actors.AreaActor.{AreaRoadDefinition, EndWarmUpPhase}
 import miss.trafficsimulation.actors._
 import miss.trafficsimulation.roads.RoadDirection.RoadDirection
 import miss.trafficsimulation.roads._
@@ -302,5 +302,5 @@ object Supervisor {
 
 case class RoadDefinition(roadId: RoadId, direction: RoadDirection) {
   def toAreaRoadDefinition(outgoingActorRef: ActorRef, prevAreaActorRef: ActorRef): AreaRoadDefinition =
-    AreaRoadDefinition(roadId, direction, outgoingActorRef, prevAreaActorRef)
+    AreaRoadDefinition(roadId, direction, outgoingActorRef.path, prevAreaActorRef.path)
 }
