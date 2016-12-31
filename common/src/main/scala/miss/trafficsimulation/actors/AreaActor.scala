@@ -1,13 +1,17 @@
 package miss.trafficsimulation.actors
 
-import akka.actor.{ActorRef, FSM, Props}
+import akka.actor.{ActorPath, ActorRef, FSM, Props}
+import akka.contrib.pattern.ReliableProxy
 import com.typesafe.config.Config
 import miss.supervisor.Supervisor
 import miss.trafficsimulation.actors.AreaActor.{Data, State}
+import miss.trafficsimulation.roads.RoadDirection._
 import miss.trafficsimulation.roads._
 import miss.visualization.VisualizationActor.TrafficState
 
 import scala.collection.mutable
+import scala.concurrent.duration._
+import scala.language.postfixOps
 
 class AreaActor(config: Config) extends FSM[State, Data] {
 
@@ -19,11 +23,16 @@ class AreaActor(config: Config) extends FSM[State, Data] {
 
   startWith(Initialized, EmptyData)
 
+  private def resolveActor(actorPath: ActorPath): ActorRef = context.actorOf(ReliableProxy.props(actorPath, 100 millis, 1 second))
+
   when(Initialized) {
     case Event(StartSimulation(verticalRoadsDefs, horizontalRoadsDefs, x, y), EmptyData) =>
       val supervisor = sender()
       log.info(s"Actor ($x, $y) starting simulation...")
-      val area = new Area(verticalRoadsDefs, horizontalRoadsDefs, config)
+      val verticalRoadsData = verticalRoadsDefs.map(r => AreaRoadData(r.roadId, r.direction, resolveActor(r.outgoingActorPath), resolveActor(r.prevAreaActorPath)))
+      val horizontalRoadsData = horizontalRoadsDefs.map(r => AreaRoadData(r.roadId, r.direction, resolveActor(r.outgoingActorPath), resolveActor(r.prevAreaActorPath)))
+
+      val area = new Area(verticalRoadsData, horizontalRoadsData, config)
       Thread.sleep(initialTimeout) // This is to avoid sending messages to uninitialized actors
       // sending initial available road space info
       sendAvailableRoadSpaceInfo(area)
@@ -142,6 +151,8 @@ class AreaActor(config: Config) extends FSM[State, Data] {
 object AreaActor {
 
   def props(config: Config): Props = Props(classOf[AreaActor], config)
+
+  case class AreaRoadDefinition(roadId: RoadId, direction: RoadDirection, outgoingActorPath: ActorPath, prevAreaActorPath: ActorPath)
 
   // Messages:
 

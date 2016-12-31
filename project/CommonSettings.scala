@@ -7,6 +7,7 @@ object CommonSettings {
   val commonDependencies: Seq[ModuleID] = Seq(
     "com.typesafe.akka" %% "akka-actor" % AkkaVersion,
     "com.typesafe.akka" %% "akka-remote" % AkkaVersion,
+    "com.typesafe.akka" %% "akka-contrib" % AkkaVersion,
     "org.specs2" %% "specs2-core" % "3.0" % "test",
     "org.scala-lang.modules" %% "scala-swing" % "1.0.1"
   )
