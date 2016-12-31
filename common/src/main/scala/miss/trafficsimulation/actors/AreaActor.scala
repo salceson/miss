@@ -1,6 +1,7 @@
 package miss.trafficsimulation.actors
 
-import akka.actor.{ActorPath, ActorRef, ActorSelection, FSM, Props}
+import akka.actor.{ActorPath, ActorRef, FSM, Props}
+import akka.contrib.pattern.ReliableProxy
 import com.typesafe.config.Config
 import miss.supervisor.Supervisor
 import miss.trafficsimulation.actors.AreaActor.{Data, State}
@@ -9,6 +10,8 @@ import miss.trafficsimulation.roads._
 import miss.visualization.VisualizationActor.TrafficState
 
 import scala.collection.mutable
+import scala.concurrent.duration._
+import scala.language.postfixOps
 
 class AreaActor(config: Config) extends FSM[State, Data] {
 
@@ -20,7 +23,7 @@ class AreaActor(config: Config) extends FSM[State, Data] {
 
   startWith(Initialized, EmptyData)
 
-  private def resolveActor(actorPath: ActorPath): ActorSelection = this.context.actorSelection(actorPath)
+  private def resolveActor(actorPath: ActorPath): ActorRef = context.actorOf(ReliableProxy.props(actorPath, 100 millis, 1 second))
 
   when(Initialized) {
     case Event(StartSimulation(verticalRoadsDefs, horizontalRoadsDefs, x, y), EmptyData) =>
@@ -75,22 +78,22 @@ class AreaActor(config: Config) extends FSM[State, Data] {
 
       // sending outgoing traffic
       val messagesSent = mutable.Map(area.outgoingActorsAndRoadIds.map({
-        case (a: ActorSelection, r: RoadId) => (a, r) -> false
+        case (a: ActorRef, r: RoadId) => (a, r) -> false
       }): _*)
       outgoingTraffic groupBy {
-        case (actor, roadId, _) => (actor, roadId)
+        case (actorRef, roadId, _) => (actorRef, roadId)
       } foreach {
-        case ((actor, roadId), list) =>
-          log.debug(s"Sending to $actor; roadId: $roadId; traffic: $list")
-          messagesSent((actor, roadId)) = true
-          actor ! OutgoingTrafficInfo(roadId, area.currentTimeFrame, list map {
+        case ((actorRef, roadId), list) =>
+          log.debug(s"Sending to $actorRef; roadId: $roadId; traffic: $list")
+          messagesSent((actorRef, roadId)) = true
+          actorRef ! OutgoingTrafficInfo(roadId, area.currentTimeFrame, list map {
             case (_, _, vac) => vac
           })
       }
       messagesSent foreach {
-        case ((actor, roadId), false) =>
-          log.debug(s"Sending to $actor; roadId: $roadId; traffic: No traffic")
-          actor ! OutgoingTrafficInfo(roadId, area.currentTimeFrame, List())
+        case ((actorRef, roadId), false) =>
+          log.debug(s"Sending to $actorRef; roadId: $roadId; traffic: No traffic")
+          actorRef ! OutgoingTrafficInfo(roadId, area.currentTimeFrame, List())
         case _ =>
       }
 
@@ -127,9 +130,9 @@ class AreaActor(config: Config) extends FSM[State, Data] {
   def sendAvailableRoadSpaceInfo(area: Area) = {
     val availableRoadSpaceInfoList = area.getAvailableSpaceInfo
     availableRoadSpaceInfoList foreach {
-      case ((actor, roadId, list)) =>
-        log.debug(s"Sending to $actor; roadId: $roadId; available space: $list")
-        actor ! AvailableRoadspaceInfo(roadId, area.currentTimeFrame, list)
+      case ((actorRef, roadId, list)) =>
+        log.debug(s"Sending to $actorRef; roadId: $roadId; available space: $list")
+        actorRef ! AvailableRoadspaceInfo(roadId, area.currentTimeFrame, list)
       case _ =>
     }
   }
@@ -137,9 +140,9 @@ class AreaActor(config: Config) extends FSM[State, Data] {
   def sendAvailableRoadSpaceInfo(area: Area, updatedRoads: Map[RoadId, Long] = Map()) = {
     val availableRoadSpaceInfoList = area.getAvailableSpaceInfo
     availableRoadSpaceInfoList foreach {
-      case ((actor, roadId, list)) if updatedRoads.contains(roadId) =>
-        log.debug(s"Sending to $actor; roadId: $roadId; timeframe: ${updatedRoads(roadId)} available space: $list")
-        actor ! AvailableRoadspaceInfo(roadId, updatedRoads(roadId), list)
+      case ((actorRef, roadId, list)) if updatedRoads.contains(roadId) =>
+        log.debug(s"Sending to $actorRef; roadId: $roadId; timeframe: ${updatedRoads(roadId)} available space: $list")
+        actorRef ! AvailableRoadspaceInfo(roadId, updatedRoads(roadId), list)
       case _ =>
     }
   }
