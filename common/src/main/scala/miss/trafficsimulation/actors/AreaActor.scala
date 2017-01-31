@@ -49,7 +49,7 @@ class AreaActor(config: Config) extends FSM[State, Data] {
     case Event(msg@ReadyForComputation(timeFrame), data@AreaData(area, visualizer, x, y, supervisor, firstSimulationFrame)) if area.currentTimeFrame == timeFrame =>
       log.debug(s"Time frame: $timeFrame")
       log.debug(s"Got $msg")
-      log.info(s"Simulating timeFrame ${area.currentTimeFrame + 1}...")
+      log.debug(s"Simulating timeFrame ${area.currentTimeFrame + 1}...")
       // log.debug(area.printVehiclesPos())
       val beforeCarsCount = area.countCars()
       log.debug(s"Total cars before simulation: " + beforeCarsCount)
