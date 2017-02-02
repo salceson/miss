@@ -20,7 +20,7 @@ object SupervisorApp extends App {
     val nodes = config.getInt("worker.nodes")
     val cores = config.getInt("worker.cores")
 
-    val requiredCores = cols * rows + cols + rows // area actors + boundary actors
+    val requiredCores = cols * rows // area actors
     val totalCores = nodes * cores
 
     if (requiredCores > totalCores) {
