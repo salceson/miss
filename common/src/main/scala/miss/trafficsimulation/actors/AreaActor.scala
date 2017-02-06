@@ -1,6 +1,6 @@
 package miss.trafficsimulation.actors
 
-import akka.actor.{ActorRef, FSM, Props}
+import akka.actor.{ActorRef, FSM, Props, Stash}
 import com.typesafe.config.Config
 import miss.supervisor.Supervisor
 import miss.trafficsimulation.actors.AreaActor.{Data, State}
@@ -9,7 +9,7 @@ import miss.visualization.VisualizationActor.TrafficState
 
 import scala.collection.mutable
 
-class AreaActor(config: Config) extends FSM[State, Data] {
+class AreaActor(config: Config) extends FSM[State, Data] with Stash {
 
   import AreaActor._
   import Supervisor.SimulationResult
@@ -24,11 +24,14 @@ class AreaActor(config: Config) extends FSM[State, Data] {
       val supervisor = sender()
       log.info(s"Actor ($x, $y) starting simulation...")
       val area = new Area(verticalRoadsDefs, horizontalRoadsDefs, config)
-      Thread.sleep(initialTimeout) // This is to avoid sending messages to uninitialized actors
       // sending initial available road space info
       sendAvailableRoadSpaceInfo(area)
       self ! ReadyForComputation(0)
+      unstashAll
       goto(Simulating) using AreaData(area, None, x, y, supervisor, 0)
+    case Event(_, _) =>
+      stash
+      stay
   }
 
   when(Simulating) {
