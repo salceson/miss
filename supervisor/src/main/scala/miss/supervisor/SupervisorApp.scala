@@ -18,7 +18,7 @@ object SupervisorApp extends App {
     val rows = config.getInt("trafficsimulation.city.rows")
 
     val nodes = config.getInt("worker.nodes")
-    val cores = config.getInt("worker.cores")
+    val cores = config.getInt("worker.areas_per_node")
 
     val requiredCores = cols * rows // area actors
     val totalCores = nodes * cores

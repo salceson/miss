@@ -15,7 +15,6 @@ class AreaActor(config: Config) extends FSM[State, Data] with Stash {
   import Supervisor.SimulationResult
 
   val timeout = config.getInt("trafficsimulation.visualization.delay")
-  val initialTimeout = config.getInt("trafficsimulation.area.initial_delay")
 
   startWith(Initialized, EmptyData)
 
