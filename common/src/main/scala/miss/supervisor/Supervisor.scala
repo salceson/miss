@@ -30,7 +30,7 @@ class Supervisor(config: Config) extends FSM[State, Data] {
   private val horizontalRoadsNum = rows * size
 
   private val workerNodesCount = config.getInt("worker.nodes")
-  private val workerCores = config.getInt("areas_per_node")
+  private val workerCores = config.getInt("worker.areas_per_node")
   private val warmUpTimeSeconds = config.getInt("trafficsimulation.warmup.seconds")
   private val simulationTimeSeconds = config.getInt("trafficsimulation.time.seconds")
 
