@@ -93,7 +93,7 @@ class Supervisor(config: Config) extends FSM[State, Data] {
     case Event(CityVisualizationStopRequest, SupervisorData(workers, areaActors, _)) =>
       stay using SupervisorData(workers, areaActors, None)
     case Event(TimeFrameUpdate(x, y, newTimeFrame), SupervisorData(workers, areaActors, cityVisualizer)) =>
-      log.info(s"Got TimeFrameUpdate from actor $x, $y: frame $newTimeFrame")
+      log.debug(s"Got TimeFrameUpdate from actor $x, $y: frame $newTimeFrame")
       cityVisualizer.foreach(ar => ar ! CityVisualizationUpdate(x, y, newTimeFrame))
       stay using SupervisorData(workers, areaActors, cityVisualizer)
     case Event(SimulationDone, SupervisorData(workers, actors, cityVisualizer)) =>
@@ -121,8 +121,8 @@ class Supervisor(config: Config) extends FSM[State, Data] {
       val minFps = minEntry._2 / simulationTimeSeconds.toDouble
       val avgFps = computedFramesByArea.values.sum / computedFramesByArea.values.size.toDouble / simulationTimeSeconds.toDouble
 
-      log.info(s"Max result: $maxEntry")
-      log.info(s"Min result: $minEntry")
+      log.debug(s"Max result: $maxEntry")
+      log.debug(s"Min result: $minEntry")
 
       log.info(s"Simulation done. Computed frames: ${minEntry._2}, min FPS: $minFps, max FPS: $maxFps, avg FPS: $avgFps")
       workers.foreach(worker => worker ! Terminate)
@@ -171,7 +171,7 @@ class Supervisor(config: Config) extends FSM[State, Data] {
     for (i <- 0 until rows) {
       for (j <- 0 until cols) {
         val worker = workersPool.dequeue()
-        log.info(s"starting actor ${i}_$j at ${worker.host.get}:${worker.port.get}")
+        log.debug(s"starting actor ${i}_$j at ${worker.host.get}:${worker.port.get}")
         actors(i)(j) = context.actorOf(AreaActor.props(config)
           .withDeploy(Deploy(scope = RemoteScope(worker))),
           s"AreaActor_${i}_$j")
