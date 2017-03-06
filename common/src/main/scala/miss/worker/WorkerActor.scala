@@ -2,6 +2,7 @@ package miss.worker
 
 import akka.actor.{FSM, Props}
 import akka.remote.AssociationErrorEvent
+import miss.common.SerializableMessage
 import miss.supervisor.Supervisor.{RegisterWorker, UnregisterWorker}
 import miss.worker.WorkerActor.{Data, State}
 
@@ -53,9 +54,9 @@ object WorkerActor {
   // Messages:
   case object Start
 
-  case object RegisterWorkerAck
+  case object RegisterWorkerAck extends SerializableMessage
 
-  case object Terminate
+  case object Terminate extends SerializableMessage
 
   case object TerminateSystem
 

@@ -4,6 +4,7 @@ import akka.actor._
 import akka.remote.RemoteScope
 import com.typesafe.config.Config
 import miss.cityvisualization.CityVisualizerActor
+import miss.common.SerializableMessage
 import miss.supervisor.Supervisor.{Data, State}
 import miss.trafficsimulation.actors.AreaActor.EndWarmUpPhase
 import miss.trafficsimulation.actors._
@@ -232,11 +233,13 @@ class Supervisor(config: Config) extends FSM[State, Data] {
 
 object Supervisor {
 
+  // messages
+
   case object Start
 
-  case object RegisterWorker
+  case object RegisterWorker extends SerializableMessage
 
-  case object UnregisterWorker
+  case object UnregisterWorker extends SerializableMessage
 
   case class StartVisualization(x: Int, y: Int)
 
@@ -248,7 +251,7 @@ object Supervisor {
 
   case class TimeFrameUpdate(x: Int, y: Int, newTimeFrame: Long)
 
-  case class SimulationResult(x: Int, y: Int, computedFrames: Long)
+  case class SimulationResult(x: Int, y: Int, computedFrames: Long) extends SerializableMessage
 
   case object WarmUpDone
 

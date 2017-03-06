@@ -2,6 +2,7 @@ package miss.trafficsimulation.actors
 
 import akka.actor.{ActorRef, FSM, Props, Stash}
 import com.typesafe.config.Config
+import miss.common.SerializableMessage
 import miss.supervisor.Supervisor
 import miss.trafficsimulation.actors.AreaActor.{Data, State}
 import miss.trafficsimulation.roads._
@@ -150,19 +151,19 @@ object AreaActor {
   case class StartSimulation(verticalRoadsDefs: List[AreaRoadDefinition],
                              horizontalRoadsDefs: List[AreaRoadDefinition],
                              x: Int,
-                             y: Int)
+                             y: Int) extends SerializableMessage
 
-  case object EndWarmUpPhase
+  case object EndWarmUpPhase extends SerializableMessage
 
-  case object EndSimulation
+  case object EndSimulation extends SerializableMessage
 
   case class AvailableRoadspaceInfo(roadId: RoadId,
                                     timeframe: Long,
-                                    availableSpacePerLane: List[Int])
+                                    availableSpacePerLane: List[Int]) extends SerializableMessage
 
   case class OutgoingTrafficInfo(roadId: RoadId,
                                  timeframe: Long,
-                                 outgoingTraffic: List[VehicleAndCoordinates])
+                                 outgoingTraffic: List[VehicleAndCoordinates]) extends SerializableMessage
 
   case class ReadyForComputation(timeframe: Long)
 
