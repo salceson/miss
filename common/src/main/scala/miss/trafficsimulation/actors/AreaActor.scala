@@ -151,7 +151,8 @@ object AreaActor {
   case class StartSimulation(verticalRoadsDefs: List[AreaRoadDefinition],
                              horizontalRoadsDefs: List[AreaRoadDefinition],
                              x: Int,
-                             y: Int) extends SerializableMessage
+                             y: Int)
+    extends SerializableMessage
 
   case object EndWarmUpPhase extends SerializableMessage
 
@@ -159,11 +160,13 @@ object AreaActor {
 
   case class AvailableRoadspaceInfo(roadId: RoadId,
                                     timeframe: Long,
-                                    availableSpacePerLane: List[Int]) extends SerializableMessage
+                                    availableSpacePerLane: List[Int])
+    extends SerializableMessage
 
   case class OutgoingTrafficInfo(roadId: RoadId,
                                  timeframe: Long,
-                                 outgoingTraffic: List[VehicleAndCoordinates]) extends SerializableMessage
+                                 outgoingTraffic: List[VehicleAndCoordinates])
+    extends SerializableMessage
 
   case class ReadyForComputation(timeframe: Long)
 
