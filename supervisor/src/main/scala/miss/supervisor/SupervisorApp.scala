@@ -7,7 +7,7 @@ object SupervisorApp extends App {
 
   import Supervisor.Start
 
-  val config = ConfigFactory.load()
+  val config = ConfigFactory.load("supervisor")
   checkEnoughCores(config)
   val actorSystem = ActorSystem("TrafficSimulation", config)
   val supervisor = actorSystem.actorOf(Supervisor.props(config), "Supervisor")
