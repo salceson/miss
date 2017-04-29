@@ -30,7 +30,7 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
   private val maxVelocity = vehicleConfig.getInt("max_velocity")
   private val maxAcceleration = vehicleConfig.getInt("max_acceleration")
 
-  private val maxTimeFrameDelay = (roadSegmentsLength * 0.5).toInt / maxVelocity
+  val maxTimeFrameDelay = (roadSegmentsLength * 0.5).toInt / maxVelocity
 
   private val intersections = ofDim[Intersection](verticalRoadsDefs.size, horizontalRoadsDefs.size)
 
@@ -60,7 +60,7 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
     override def compare(x: OutgoingTrafficInfo, y: OutgoingTrafficInfo): Int = -x.timeframe.compare(y.timeframe)
   }
 
-  private val incomingTrafficQueue = mutable.PriorityQueue[OutgoingTrafficInfo]()
+  val incomingTrafficQueue = mutable.PriorityQueue[OutgoingTrafficInfo]()
 
   var intersectionGreenLightsDirection: LightsDirection = Horizontal
 
@@ -227,9 +227,10 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
   def isReadyForComputation(): Boolean = {
     for (road <- horizontalRoads ++ verticalRoads) {
       road.elems.head match {
-        case firstRoadSeg: RoadSegment => if ((currentTimeFrame + 1) - firstRoadSeg.lastIncomingTrafficTimeFrame > maxTimeFrameDelay) {
-          return false
-        }
+        case firstRoadSeg: RoadSegment =>
+          if ((currentTimeFrame + 1) - firstRoadSeg.lastIncomingTrafficTimeFrame > maxTimeFrameDelay) {
+            return false
+          }
         case _ => throw new ClassCastException
       }
     }
@@ -355,6 +356,6 @@ class Area(verticalRoadsDefs: List[AreaRoadDefinition],
           (0 until firstRoadSeg.lanesCount).map(i => firstRoadSeg.availableCells(i))
         case _ => throw new ClassCastException
       }).toList
-    )
+      )
   }
 }

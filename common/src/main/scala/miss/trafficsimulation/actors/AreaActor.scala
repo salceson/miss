@@ -6,8 +6,10 @@ import miss.common.SerializableMessage
 import miss.supervisor.Supervisor
 import miss.trafficsimulation.actors.AreaActor.{Data, State}
 import miss.trafficsimulation.roads._
+import miss.trafficsimulation.util.FiniteQueue
 import miss.visualization.VisualizationActor.TrafficState
 
+import scala.collection.immutable.Queue
 import scala.collection.mutable
 
 class AreaActor(config: Config) extends FSM[State, Data] with Stash {
@@ -16,6 +18,12 @@ class AreaActor(config: Config) extends FSM[State, Data] with Stash {
   import Supervisor.SimulationResult
 
   val timeout = config.getInt("trafficsimulation.visualization.delay")
+
+  private var lastIncomingMessagesQueue = Queue[String]()
+  private var lastSentMessagesQueue = Queue[String]()
+  private val debugQueueSize = 150
+
+  implicit def queue2finitequeue[A](q: Queue[A]) = new FiniteQueue[A](q)
 
   startWith(Initialized, EmptyData)
 
@@ -34,22 +42,53 @@ class AreaActor(config: Config) extends FSM[State, Data] with Stash {
       stay
   }
 
+  def printDebug(info: String, area: Area) = {
+    val stringBuilder = new StringBuilder(info)
+
+    stringBuilder.append("\nPriority queue:\n")
+    while (area.incomingTrafficQueue.nonEmpty) {
+      val x@OutgoingTrafficInfo(roadId, timeFrame, outgoingTraffic) = area.incomingTrafficQueue.dequeue()
+      stringBuilder.append(s"tf=${x.timeframe}, road=${x.roadId}\n")
+    }
+
+    stringBuilder.append("\nIncoming messages:\n")
+    lastIncomingMessagesQueue.foreach(x => stringBuilder.append(x.toString).append("\n"))
+
+    stringBuilder.append("\nSent messages:\n")
+    lastSentMessagesQueue.foreach(x => stringBuilder.append(x.toString).append("\n"))
+
+    log.info(stringBuilder.toString())
+  }
+
   when(Simulating) {
     case Event(msg@OutgoingTrafficInfo(roadId, timeFrame, outgoingTraffic), d: AreaData) =>
+      lastIncomingMessagesQueue = lastIncomingMessagesQueue.enqueueFinite(s"OutgoingTrafficInfo ${sender.path.address} ${sender.path.name} tf=$timeFrame road=$roadId", debugQueueSize)
       val area = d.area
       log.debug(s"Got $msg")
       val updatedRoads = area.putIncomingTraffic(msg)
       sendAvailableRoadSpaceInfo(area, updatedRoads)
       if (area.isReadyForComputation()) {
         self ! ReadyForComputation(area.currentTimeFrame)
+      } else {
+        for (road <- area.horizontalRoads ++ area.verticalRoads) {
+          road.elems.head match {
+            case firstRoadSeg: RoadSegment =>
+              if ((area.currentTimeFrame + 1) - firstRoadSeg.lastIncomingTrafficTimeFrame > area.maxTimeFrameDelay) {
+                log.info(s"Not ready for computation tf ${area.currentTimeFrame + 1}: last incoming tf on road ${firstRoadSeg.roadId} (${road.prevAreaActorRef.path.name}) is  ${firstRoadSeg.lastIncomingTrafficTimeFrame}")
+              }
+            case _ => throw new ClassCastException
+          }
+        }
       }
       stay
     case Event(msg@AvailableRoadspaceInfo(roadId, timeFrame, availableSpacePerLane), d: AreaData) =>
+      lastIncomingMessagesQueue = lastIncomingMessagesQueue.enqueueFinite(s"AvailableRoadspaceInfo \t${sender.path.address} \t${sender.path.name} \ttf=$timeFrame \troad=$roadId", debugQueueSize)
       val area = d.area
       log.debug(s"Got $msg")
       area.updateNeighboursAvailableRoadspace(msg)
       stay
     case Event(msg@ReadyForComputation(timeFrame), data@AreaData(area, visualizer, x, y, supervisor, firstSimulationFrame)) if area.currentTimeFrame == timeFrame =>
+      lastIncomingMessagesQueue = lastIncomingMessagesQueue.enqueueFinite(s"ReadyForComputation \t${sender.path.address} \t${sender.path.name} \ttf=$timeFrame", debugQueueSize)
       log.debug(s"Time frame: $timeFrame")
       log.debug(s"Got $msg")
       log.debug(s"Simulating timeFrame ${area.currentTimeFrame + 1}...")
@@ -83,11 +122,13 @@ class AreaActor(config: Config) extends FSM[State, Data] with Stash {
           actorRef ! OutgoingTrafficInfo(roadId, area.currentTimeFrame, list map {
             case (_, _, vac) => vac
           })
+          lastSentMessagesQueue = lastSentMessagesQueue.enqueueFinite(s"OutgoingTrafficInfo-traffic \t${actorRef.path.address} \t${actorRef.path.name} \tcTF=${area.currentTimeFrame} \troad=$roadId", debugQueueSize)
       }
       messagesSent foreach {
         case ((actorRef, roadId), false) =>
           log.debug(s"Sending to $actorRef; roadId: $roadId; traffic: No traffic")
           actorRef ! OutgoingTrafficInfo(roadId, area.currentTimeFrame, List())
+          lastSentMessagesQueue = lastSentMessagesQueue.enqueueFinite(s"OutgoingTrafficInfo-noTraffic \t${actorRef.path.address} \t${actorRef.path.name} \tcTF=${area.currentTimeFrame} \troad=$roadId", debugQueueSize)
         case _ =>
       }
 
@@ -103,13 +144,15 @@ class AreaActor(config: Config) extends FSM[State, Data] with Stash {
       }
       stay using data
     case Event(ReadyForComputation(timeFrame), AreaData(area, _, _, _, _, _)) if area.currentTimeFrame != timeFrame =>
+      lastIncomingMessagesQueue = lastIncomingMessagesQueue.enqueueFinite(s"ReadyForComputation \t${sender.path.address} \t${sender.path.name} \ttf=$timeFrame", debugQueueSize)
       stay
     case Event(EndWarmUpPhase, ad: AreaData) =>
       stay using ad.copy(firstSimulationFrame = ad.area.currentTimeFrame)
     case Event(EndSimulation, AreaData(area, visualizer, x, y, supervisor, firstSimulationFrame)) =>
       val computedFrames = area.currentTimeFrame - firstSimulationFrame
-      supervisor ! SimulationResult(x, y, computedFrames)
-      log.info(s"Simulation result: computed frames: $computedFrames, firstFrame: $firstSimulationFrame")
+      supervisor ! SimulationResult(x, y, area.currentTimeFrame)
+//      log.info(s"Simulation result: computed frames: $computedFrames, firstFrame: $firstSimulationFrame")
+      printDebug(s"Simulation result: computed frames: $computedFrames, firstFrame: $firstSimulationFrame, lastFrame: ${area.currentTimeFrame}", area)
       stop
     case Event(VisualizationStartRequest(visualizer), ad: AreaData) =>
       stay using ad.copy(visualizer = Some(visualizer))
@@ -126,6 +169,7 @@ class AreaActor(config: Config) extends FSM[State, Data] with Stash {
     availableRoadSpaceInfoList foreach {
       case ((actorRef, roadId, list)) =>
         log.debug(s"Sending to $actorRef; roadId: $roadId; available space: $list")
+        lastSentMessagesQueue = lastSentMessagesQueue.enqueueFinite(s"AvailableRoadspaceInfo \t${actorRef.path.address} \t${actorRef.path.name} \tcTF=${area.currentTimeFrame} \troad=$roadId", debugQueueSize)
         actorRef ! AvailableRoadspaceInfo(roadId, area.currentTimeFrame, list)
       case _ =>
     }
@@ -136,6 +180,7 @@ class AreaActor(config: Config) extends FSM[State, Data] with Stash {
     availableRoadSpaceInfoList foreach {
       case ((actorRef, roadId, list)) if updatedRoads.contains(roadId) =>
         log.debug(s"Sending to $actorRef; roadId: $roadId; timeframe: ${updatedRoads(roadId)} available space: $list")
+        lastSentMessagesQueue = lastSentMessagesQueue.enqueueFinite(s"AvailableRoadspaceInfo-UpdatedRoads \t${actorRef.path.address} \t${actorRef.path.name} \ttf=${updatedRoads(roadId)} \troad=$roadId", debugQueueSize)
         actorRef ! AvailableRoadspaceInfo(roadId, updatedRoads(roadId), list)
       case _ =>
     }
@@ -195,5 +240,5 @@ object AreaActor {
                       supervisor: ActorRef,
                       firstSimulationFrame: Long)
     extends Data
-
 }
+

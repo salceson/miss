@@ -112,18 +112,23 @@ class Supervisor(config: Config) extends FSM[State, Data] {
   when(EndingSimulation) {
     case Event(SimulationResult(x, y, computedFrames), data@TearDownData(workers, actorsToTerminate, computedFramesByArea)) if actorsToTerminate.size > 1 =>
       stay using TearDownData(workers, actorsToTerminate - sender, computedFramesByArea + ((x, y) -> computedFrames))
-    case Event(SimulationResult(x, y, computedFrames), data@TearDownData(workers, actorsToTerminate, computedFramesByArea)) if actorsToTerminate.size == 1 =>
-      computedFramesByArea + ((x, y) -> computedFrames)
+    case Event(msg@SimulationResult(x, y, computedFrames), data@TearDownData(workers, actorsToTerminate, computedFramesByArea)) if actorsToTerminate.size == 1 =>
+//      log.info(msg.toString)
+      val computedFramesEntries = computedFramesByArea + ((x, y) -> computedFrames)
 
-      val maxEntry = computedFramesByArea.maxBy(_._2)
-      val minEntry = computedFramesByArea.minBy(_._2)
+      val maxEntry = computedFramesEntries.maxBy(_._2)
+      val minEntry = computedFramesEntries.minBy(_._2)
 
       val maxFps = maxEntry._2 / simulationTimeSeconds.toDouble
       val minFps = minEntry._2 / simulationTimeSeconds.toDouble
-      val avgFps = computedFramesByArea.values.sum / computedFramesByArea.values.size.toDouble / simulationTimeSeconds.toDouble
+      val avgFps = computedFramesEntries.values.sum / computedFramesEntries.values.size.toDouble / simulationTimeSeconds.toDouble
 
       log.debug(s"Max result: $maxEntry")
       log.debug(s"Min result: $minEntry")
+
+      val computedFramesMatrixTransposed = ofDim[Long](cols, rows)
+      computedFramesEntries.foreach(e => computedFramesMatrixTransposed(e._1._2)(e._1._1) = e._2)
+      log.info(s"Results matrix:\n${computedFramesMatrixTransposed.map{_.mkString(",")}.mkString("\n")}")
 
       log.info(s"Simulation done. Computed frames: ${minEntry._2}, min FPS: $minFps, max FPS: $maxFps, avg FPS: $avgFps")
       workers.foreach(worker => worker ! Terminate)
