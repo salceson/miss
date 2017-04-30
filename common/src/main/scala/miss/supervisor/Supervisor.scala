@@ -169,6 +169,7 @@ class Supervisor(config: Config) extends FSM[State, Data] {
     val workersPool = buildWorkersPool(workers)
 
     // Create area actors
+    log.info("Deploying actors...")
     for (i <- 0 until rows) {
       for (j <- 0 until cols) {
         val worker = workersPool.dequeue()
@@ -178,6 +179,7 @@ class Supervisor(config: Config) extends FSM[State, Data] {
           s"AreaActor_${i}_$j")
       }
     }
+    log.info("Done deploying actors")
     // Generate area roads definitions
     for (i <- 0 until verticalRoadsNum) {
       val direction = if (i % 2 == 0) RoadDirection.NS else RoadDirection.SN
@@ -188,6 +190,7 @@ class Supervisor(config: Config) extends FSM[State, Data] {
       horizontalRoadDefs(j) = RoadDefinition(RoadId(verticalRoadsNum + j), direction)
     }
     // Start simulation
+    log.info("Sending StartSimulation commands...")
     for (i <- 0 until rows) {
       for (j <- 0 until cols) {
         val areaVerticalRoadDefs = ListBuffer[AreaRoadDefinition]()
@@ -226,6 +229,7 @@ class Supervisor(config: Config) extends FSM[State, Data] {
         actors(i)(j) ! StartSimulation(areaVerticalRoadDefs.toList, areaHorizontalRoadDefs.toList, i, j)
       }
     }
+    log.info("Done sending StartSimulation")
     actors
   }
 

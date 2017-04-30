@@ -140,6 +140,8 @@ class AreaActor(config: Config) extends FSM[State, Data] with Stash {
       case _ =>
     }
   }
+
+  log.info(s"Actor ${self.path} initialized")
 }
 
 object AreaActor {
