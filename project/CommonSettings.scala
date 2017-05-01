@@ -2,13 +2,14 @@ import sbt._
 import Keys._
 
 object CommonSettings {
-  private val AkkaVersion = "2.4.2"
+  private val AkkaVersion = "2.4.16"
 
   val commonDependencies: Seq[ModuleID] = Seq(
     "com.typesafe.akka" %% "akka-actor" % AkkaVersion,
     "com.typesafe.akka" %% "akka-remote" % AkkaVersion,
     "org.specs2" %% "specs2-core" % "3.0" % "test",
-    "org.scala-lang.modules" %% "scala-swing" % "1.0.1"
+    "org.scala-lang.modules" %% "scala-swing" % "1.0.1",
+    "com.github.romix.akka" %% "akka-kryo-serialization" % "0.5.0"
   )
 
   val commonTestScalacSettings: Seq[String] = Seq("-Yrangepos")

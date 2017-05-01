@@ -4,6 +4,7 @@ import akka.actor._
 import akka.remote.RemoteScope
 import com.typesafe.config.Config
 import miss.cityvisualization.CityVisualizerActor
+import miss.common.SerializableMessage
 import miss.supervisor.Supervisor.{Data, State}
 import miss.trafficsimulation.actors.AreaActor.{AreaRoadDefinition, EndWarmUpPhase}
 import miss.trafficsimulation.actors._
@@ -30,7 +31,7 @@ class Supervisor(config: Config) extends FSM[State, Data] {
   private val horizontalRoadsNum = rows * size
 
   private val workerNodesCount = config.getInt("worker.nodes")
-  private val workerCores = config.getInt("worker.cores")
+  private val workerCores = config.getInt("worker.areas_per_node")
   private val warmUpTimeSeconds = config.getInt("trafficsimulation.warmup.seconds")
   private val simulationTimeSeconds = config.getInt("trafficsimulation.time.seconds")
 
@@ -93,7 +94,7 @@ class Supervisor(config: Config) extends FSM[State, Data] {
     case Event(CityVisualizationStopRequest, SupervisorData(workers, areaActors, _)) =>
       stay using SupervisorData(workers, areaActors, None)
     case Event(TimeFrameUpdate(x, y, newTimeFrame), SupervisorData(workers, areaActors, cityVisualizer)) =>
-      log.info(s"Got TimeFrameUpdate from actor $x, $y: frame $newTimeFrame")
+      log.debug(s"Got TimeFrameUpdate from actor $x, $y: frame $newTimeFrame")
       cityVisualizer.foreach(ar => ar ! CityVisualizationUpdate(x, y, newTimeFrame))
       stay using SupervisorData(workers, areaActors, cityVisualizer)
     case Event(SimulationDone, SupervisorData(workers, actors, cityVisualizer)) =>
@@ -121,8 +122,8 @@ class Supervisor(config: Config) extends FSM[State, Data] {
       val minFps = minEntry._2 / simulationTimeSeconds.toDouble
       val avgFps = computedFramesByArea.values.sum / computedFramesByArea.values.size.toDouble / simulationTimeSeconds.toDouble
 
-      log.info(s"Max result: $maxEntry")
-      log.info(s"Min result: $minEntry")
+      log.debug(s"Max result: $maxEntry")
+      log.debug(s"Min result: $minEntry")
 
       log.info(s"Simulation done. Computed frames: ${minEntry._2}, min FPS: $minFps, max FPS: $maxFps, avg FPS: $avgFps")
       workers.foreach(worker => worker ! Terminate)
@@ -162,8 +163,6 @@ class Supervisor(config: Config) extends FSM[State, Data] {
   private def startSimulation(workers: List[ActorRef]): Array[Array[ActorRef]] = {
 
     val actors = ofDim[ActorRef](rows, cols)
-    val horizontalBoundaryActors = ofDim[ActorRef](rows)
-    val verticalBoundaryActors = ofDim[ActorRef](cols)
     val horizontalRoadDefs = ofDim[RoadDefinition](horizontalRoadsNum)
     val verticalRoadDefs = ofDim[RoadDefinition](verticalRoadsNum)
 
@@ -173,46 +172,10 @@ class Supervisor(config: Config) extends FSM[State, Data] {
     for (i <- 0 until rows) {
       for (j <- 0 until cols) {
         val worker = workersPool.dequeue()
-        log.info(s"starting actor ${i}_$j at ${worker.host.get}:${worker.port.get}")
+        log.debug(s"starting actor ${i}_$j at ${worker.host.get}:${worker.port.get}")
         actors(i)(j) = context.actorOf(AreaActor.props(config)
           .withDeploy(Deploy(scope = RemoteScope(worker))),
           s"AreaActor_${i}_$j")
-      }
-    }
-    // Create horizontal boundary actors
-    for (i <- 0 until rows) {
-      val worker = workersPool.dequeue()
-      log.info(s"starting horizontal actor $i at ${worker.host.get}:${worker.port.get}")
-      if (i % 2 == 0) {
-        horizontalBoundaryActors(i) = context.actorOf(
-          BoundaryAreaActor.props(actors(i)(0), actors(i)(cols - 1))
-            .withDeploy(Deploy(scope = RemoteScope(worker))),
-          s"BoundaryActor_horizontal_$i"
-        )
-      } else {
-        horizontalBoundaryActors(i) = context.actorOf(
-          BoundaryAreaActor.props(actors(i)(cols - 1), actors(i)(0))
-            .withDeploy(Deploy(scope = RemoteScope(worker))),
-          s"BoundaryActor_horizontal_$i"
-        )
-      }
-    }
-    // Create vertical boundary actors
-    for (j <- 0 until cols) {
-      val worker = workersPool.dequeue()
-      log.info(s"starting vertical actor $j at ${worker.host.get}:${worker.port.get}")
-      if (j % 2 == 0) {
-        verticalBoundaryActors(j) = context.actorOf(
-          BoundaryAreaActor.props(actors(rows - 1)(j), actors(0)(j))
-            .withDeploy(Deploy(scope = RemoteScope(worker))),
-          s"BoundaryActor_vertical_$j"
-        )
-      } else {
-        verticalBoundaryActors(j) = context.actorOf(
-          BoundaryAreaActor.props(actors(0)(j), actors(rows - 1)(j))
-            .withDeploy(Deploy(scope = RemoteScope(worker))),
-          s"BoundaryActor_vertical_$j"
-        )
       }
     }
     // Generate area roads definitions
@@ -231,8 +194,8 @@ class Supervisor(config: Config) extends FSM[State, Data] {
         val areaHorizontalRoadDefs = ListBuffer[AreaRoadDefinition]()
 
         for (vertRoad <- (j * size) until (j * size + size)) {
-          val prevAreaActor = if (i == 0) verticalBoundaryActors(j) else actors(i - 1)(j)
-          val nextAreaActor = if (i == rows - 1) verticalBoundaryActors(j) else actors(i + 1)(j)
+          val prevAreaActor = if (i == 0) actors(rows - 1)(j) else actors(i - 1)(j)
+          val nextAreaActor = if (i == rows - 1) actors(0)(j) else actors(i + 1)(j)
 
           val roadDefinition = verticalRoadDefs(vertRoad)
           roadDefinition.direction match {
@@ -246,8 +209,8 @@ class Supervisor(config: Config) extends FSM[State, Data] {
         }
 
         for (horRoad <- (i * size) until (i * size + size)) {
-          val prevAreaActor = if (j == 0) horizontalBoundaryActors(i) else actors(i)(j - 1)
-          val nextAreaActor = if (j == cols - 1) horizontalBoundaryActors(i) else actors(i)(j + 1)
+          val prevAreaActor = if (j == 0) actors(i)(cols - 1) else actors(i)(j - 1)
+          val nextAreaActor = if (j == cols - 1) actors(i)(0) else actors(i)(j + 1)
 
           val roadDefinition = horizontalRoadDefs(horRoad)
           roadDefinition.direction match {
@@ -270,11 +233,13 @@ class Supervisor(config: Config) extends FSM[State, Data] {
 
 object Supervisor {
 
+  // messages
+
   case object Start
 
-  case object RegisterWorker
+  case object RegisterWorker extends SerializableMessage
 
-  case object UnregisterWorker
+  case object UnregisterWorker extends SerializableMessage
 
   case class StartVisualization(x: Int, y: Int)
 
@@ -286,7 +251,7 @@ object Supervisor {
 
   case class TimeFrameUpdate(x: Int, y: Int, newTimeFrame: Long)
 
-  case class SimulationResult(x: Int, y: Int, computedFrames: Long)
+  case class SimulationResult(x: Int, y: Int, computedFrames: Long) extends SerializableMessage
 
   case object WarmUpDone
 

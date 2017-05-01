@@ -1,7 +1,8 @@
 package miss.trafficsimulation.actors
 
-import akka.actor.{ActorPath, ActorRef, ActorSelection, FSM, Props}
+import akka.actor.{ActorPath, ActorRef, ActorSelection, FSM, Props, Stash}
 import com.typesafe.config.Config
+import miss.common.SerializableMessage
 import miss.supervisor.Supervisor
 import miss.trafficsimulation.actors.AreaActor.{Data, State}
 import miss.trafficsimulation.roads.RoadDirection._
@@ -10,13 +11,12 @@ import miss.visualization.VisualizationActor.TrafficState
 
 import scala.collection.mutable
 
-class AreaActor(config: Config) extends FSM[State, Data] {
+class AreaActor(config: Config) extends FSM[State, Data] with Stash {
 
   import AreaActor._
   import Supervisor.SimulationResult
 
   val timeout = config.getInt("trafficsimulation.visualization.delay")
-  val initialTimeout = config.getInt("trafficsimulation.area.initial_delay")
 
   startWith(Initialized, EmptyData)
 
@@ -30,11 +30,14 @@ class AreaActor(config: Config) extends FSM[State, Data] {
       val horizontalRoadsData = horizontalRoadsDefs.map(r => AreaRoadData(r.roadId, r.direction, resolveActor(r.outgoingActorPath), resolveActor(r.prevAreaActorPath)))
 
       val area = new Area(verticalRoadsData, horizontalRoadsData, config)
-      Thread.sleep(initialTimeout) // This is to avoid sending messages to uninitialized actors
       // sending initial available road space info
       sendAvailableRoadSpaceInfo(area)
       self ! ReadyForComputation(0)
+      unstashAll
       goto(Simulating) using AreaData(area, None, x, y, supervisor, 0)
+    case Event(_, _) =>
+      stash
+      stay
   }
 
   when(Simulating) {
@@ -55,7 +58,7 @@ class AreaActor(config: Config) extends FSM[State, Data] {
     case Event(msg@ReadyForComputation(timeFrame), data@AreaData(area, visualizer, x, y, supervisor, firstSimulationFrame)) if area.currentTimeFrame == timeFrame =>
       log.debug(s"Time frame: $timeFrame")
       log.debug(s"Got $msg")
-      log.info(s"Simulating timeFrame ${area.currentTimeFrame + 1}...")
+      log.debug(s"Simulating timeFrame ${area.currentTimeFrame + 1}...")
       // log.debug(area.printVehiclesPos())
       val beforeCarsCount = area.countCars()
       log.debug(s"Total cars before simulation: " + beforeCarsCount)
@@ -149,7 +152,7 @@ object AreaActor {
 
   def props(config: Config): Props = Props(classOf[AreaActor], config)
 
-  case class AreaRoadDefinition(roadId: RoadId, direction: RoadDirection, outgoingActorPath: ActorPath, prevAreaActorPath: ActorPath)
+  case class AreaRoadDefinition(roadId: RoadId, direction: RoadDirection, outgoingActorPath: ActorPath, prevAreaActorPath: ActorPath) extends SerializableMessage
 
   // Messages:
 
@@ -157,18 +160,21 @@ object AreaActor {
                              horizontalRoadsDefs: List[AreaRoadDefinition],
                              x: Int,
                              y: Int)
+    extends SerializableMessage
 
-  case object EndWarmUpPhase
+  case object EndWarmUpPhase extends SerializableMessage
 
-  case object EndSimulation
+  case object EndSimulation extends SerializableMessage
 
   case class AvailableRoadspaceInfo(roadId: RoadId,
                                     timeframe: Long,
                                     availableSpacePerLane: List[Int])
+    extends SerializableMessage
 
   case class OutgoingTrafficInfo(roadId: RoadId,
                                  timeframe: Long,
                                  outgoingTraffic: List[VehicleAndCoordinates])
+    extends SerializableMessage
 
   case class ReadyForComputation(timeframe: Long)
 

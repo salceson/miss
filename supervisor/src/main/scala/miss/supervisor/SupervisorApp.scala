@@ -7,7 +7,7 @@ object SupervisorApp extends App {
 
   import Supervisor.Start
 
-  val config = ConfigFactory.load()
+  val config = ConfigFactory.load("supervisor")
   checkEnoughCores(config)
   val actorSystem = ActorSystem("TrafficSimulation", config)
   val supervisor = actorSystem.actorOf(Supervisor.props(config), "Supervisor")
@@ -18,9 +18,9 @@ object SupervisorApp extends App {
     val rows = config.getInt("trafficsimulation.city.rows")
 
     val nodes = config.getInt("worker.nodes")
-    val cores = config.getInt("worker.cores")
+    val cores = config.getInt("worker.areas_per_node")
 
-    val requiredCores = cols * rows + cols + rows // area actors + boundary actors
+    val requiredCores = cols * rows // area actors
     val totalCores = nodes * cores
 
     if (requiredCores > totalCores) {
