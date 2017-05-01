@@ -1,6 +1,6 @@
 package miss.trafficsimulation.roads
 
-import akka.actor.ActorSelection
+import akka.actor.ActorRef
 import com.typesafe.config.Config
 import miss.trafficsimulation.actors.AreaActor.{AvailableRoadspaceInfo, OutgoingTrafficInfo}
 import miss.trafficsimulation.roads.LightsDirection.{Horizontal, LightsDirection, Vertical}
@@ -13,7 +13,7 @@ import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.util.Random
 
-case class AreaRoadData(roadId: RoadId, direction: RoadDirection, outgoingActor: ActorSelection, prevAreaActor: ActorSelection)
+case class AreaRoadData(roadId: RoadId, direction: RoadDirection, outgoingActor: ActorRef, prevAreaActor: ActorRef)
 
 class Area(verticalRoadsDefs: List[AreaRoadData],
            horizontalRoadsDefs: List[AreaRoadData],
@@ -46,10 +46,10 @@ class Area(verticalRoadsDefs: List[AreaRoadData],
     (x: Int) => createRoad(verticalRoadsDefs(x), transposedIntersections(x).toList)
   )
 
-  val outgoingActorsAndRoadIds: List[(ActorSelection, RoadId)] = (horizontalRoadsDefs ++ verticalRoadsDefs)
+  val outgoingActorsAndRoadIds: List[(ActorRef, RoadId)] = (horizontalRoadsDefs ++ verticalRoadsDefs)
     .map((ard: AreaRoadData) => (ard.outgoingActor, ard.roadId))
 
-  val prevActorsAndRoadIds: List[(ActorSelection, RoadId)] = (horizontalRoadsDefs ++ verticalRoadsDefs)
+  val prevActorsAndRoadIds: List[(ActorRef, RoadId)] = (horizontalRoadsDefs ++ verticalRoadsDefs)
     .map((ard: AreaRoadData) => (ard.prevAreaActor, ard.roadId))
 
   private val roadsMap = Map((horizontalRoads ++ verticalRoads).map((r: Road) => r.id -> r): _*)
@@ -158,10 +158,10 @@ class Area(verticalRoadsDefs: List[AreaRoadData],
     }
   }
 
-  def simulate(): List[(ActorSelection, RoadId, VehicleAndCoordinates)] = {
+  def simulate(): List[(ActorRef, RoadId, VehicleAndCoordinates)] = {
     val timeFrame = currentTimeFrame + 1
 
-    val vehiclesAndCoordinatesOutOfArea = ListBuffer[(ActorSelection, RoadId, VehicleAndCoordinates)]()
+    val vehiclesAndCoordinatesOutOfArea = ListBuffer[(ActorRef, RoadId, VehicleAndCoordinates)]()
 
     val segmentsQueue = mutable.Queue[RoadElem]()
 
@@ -331,7 +331,7 @@ class Area(verticalRoadsDefs: List[AreaRoadData],
     msgBuilder.toString
   }
 
-  def getAvailableSpaceInfo: Iterable[(ActorSelection, RoadId, List[Int])] = {
+  def getAvailableSpaceInfo: Iterable[(ActorRef, RoadId, List[Int])] = {
     roadsMap.values.map(road => {
       (
         road.prevAreaActor,
@@ -341,11 +341,11 @@ class Area(verticalRoadsDefs: List[AreaRoadData],
             (0 until firstRoadSeg.lanesCount).map(i => firstRoadSeg.availableCells(i))
           case _ => throw new ClassCastException
         }).toList
-        )
+      )
     })
   }
 
-  def getAvailableSpaceInfo(roadId: RoadId): (ActorSelection, RoadId, List[Int]) = {
+  def getAvailableSpaceInfo(roadId: RoadId): (ActorRef, RoadId, List[Int]) = {
     val road = roadsMap(roadId)
     (
       road.prevAreaActor,
@@ -355,6 +355,6 @@ class Area(verticalRoadsDefs: List[AreaRoadData],
           (0 until firstRoadSeg.lanesCount).map(i => firstRoadSeg.availableCells(i))
         case _ => throw new ClassCastException
       }).toList
-      )
+    )
   }
 }

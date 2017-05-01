@@ -1,6 +1,6 @@
 package miss.trafficsimulation.roads
 
-import akka.actor.ActorSelection
+import akka.actor.ActorRef
 import miss.trafficsimulation.roads.LightsDirection.{Horizontal, LightsDirection, Vertical}
 import miss.trafficsimulation.roads.RoadDirection.{EW, NS, RoadDirection, SN, WE}
 import miss.trafficsimulation.traffic.MoveDirection.{GoStraight, SwitchLaneLeft, SwitchLaneRight, Turn}
@@ -9,13 +9,13 @@ import miss.trafficsimulation.traffic._
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-case class Road(id: RoadId, direction: RoadDirection, elems: List[RoadElem], prevAreaActor: ActorSelection, nextAreaRoadSegment: NextAreaRoadSegment)
+case class Road(id: RoadId, direction: RoadDirection, elems: List[RoadElem], prevAreaActor: ActorRef, nextAreaRoadSegment: NextAreaRoadSegment)
 
 case class RoadId(id: Int)
 
 sealed trait RoadElem
 
-case class NextAreaRoadSegment(roadId: RoadId, actor: ActorSelection, lanesCount: Int) extends RoadElem {
+case class NextAreaRoadSegment(roadId: RoadId, actor: ActorRef, lanesCount: Int) extends RoadElem {
   private val carsSentSinceUpdate: ListBuffer[Int] = ListBuffer.fill(lanesCount)(0)
   private var availableSpacePerLane: List[Int] = List.fill(lanesCount)(0)
   private var lastUpdateTimeFrame: Long = 0
@@ -298,8 +298,8 @@ class RoadSegment(val roadId: RoadId,
     Math.min(maxPossible, maxVelocity)
   }
 
-  def simulate(lightsDirection: LightsDirection, timeFrame: Long): List[(ActorSelection, RoadId, VehicleAndCoordinates)] = {
-    val vehiclesAndCoordinatesOutOfArea = ListBuffer[(ActorSelection, RoadId, VehicleAndCoordinates)]()
+  def simulate(lightsDirection: LightsDirection, timeFrame: Long): List[(ActorRef, RoadId, VehicleAndCoordinates)] = {
+    val vehiclesAndCoordinatesOutOfArea = ListBuffer[(ActorRef, RoadId, VehicleAndCoordinates)]()
 
     for (vac <- vehicleIterator(timeFrame - 1)) {
       val move = vac.vehicle.move(calculatePossibleMoves(vac, lightsDirection))
