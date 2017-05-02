@@ -128,13 +128,13 @@ class Supervisor(config: Config) extends FSM[State, Data] {
 
       log.info(s"Simulation done. Computed frames: ${minEntry._2}, min FPS: $minFps, max FPS: $maxFps, avg FPS: $avgFps")
       workers.foreach(worker => worker ! Terminate)
-      context.system.scheduler.scheduleOnce(2 seconds, self, TerminateSupervisor)
+      context.system.scheduler.scheduleOnce(5 seconds, self, TerminateSupervisor)
       goto(Terminating)
   }
 
   when(Terminating) {
     case Event(TerminateSupervisor, _) =>
-      context.system.terminate()
+      System.exit(0)
       stop
   }
 
