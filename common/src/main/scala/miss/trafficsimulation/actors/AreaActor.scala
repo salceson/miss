@@ -34,18 +34,18 @@ class AreaActor(config: Config) extends FSM[State, Data] with Stash {
   }
 
   private def resolveActor(actorPath: ActorPath): Unit = {
-    log.info(s"Resolving $actorPath")
+    log.debug(s"Resolving $actorPath")
 
     def resolveActorWithRetries(actorPath: ActorPath, retries: Int)(implicit ec: ExecutionContext): Future[ActorRef] = {
       val future = this.context.actorSelection(actorPath).resolveOne(resolveActorTimeoutSeconds seconds)
       future onComplete {
         case Failure(e) if retries > 0 =>
-          log.warning(s"Cannot resolve actor: $actorPath due to: ${e.getMessage}.")
+          log.info(s"Cannot resolve actor: $actorPath due to: ${e.getMessage}. Retrying.")
         case Failure(e) =>
           log.error(s"Cannot resolve actor: $actorPath due to: ${e.getMessage}. Shutting down.")
           context.system.terminate()
         case Success(actorRef) =>
-          log.info(s"Resolved actor: ${actorRef.path}")
+          log.debug(s"Resolved actor: ${actorRef.path}")
           self ! ResolvedActor(actorPath, actorRef)
       }
       future recoverWith {
@@ -97,7 +97,7 @@ class AreaActor(config: Config) extends FSM[State, Data] with Stash {
       unstashAll
       goto(Simulating) using AreaData(area, None, startSimulationMessage.x, startSimulationMessage.y, supervisor, 0)
     case Event(msg@ResolvedActor(_, _), data@ResolvingActorsData(_, _, _, _)) =>
-      log.error(s"got4 $msg $data")
+      log.warning(s"Got unexpected message: $msg in state ResolvingActors with data: $data")
       stay
     case Event(_, _) =>
       stash
@@ -211,7 +211,7 @@ class AreaActor(config: Config) extends FSM[State, Data] with Stash {
     }
   }
 
-  log.info(s"Actor ${self.path} initialized")
+  log.debug(s"Actor ${self.path} initialized")
 }
 
 object AreaActor {
