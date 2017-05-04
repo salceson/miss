@@ -166,18 +166,38 @@ class Supervisor(config: Config) extends FSM[State, Data] {
     val horizontalRoadDefs = ofDim[RoadDefinition](horizontalRoadsNum)
     val verticalRoadDefs = ofDim[RoadDefinition](verticalRoadsNum)
 
-    val workersPool = buildWorkersPool(workers)
-
-    // Create area actors
-    for (i <- 0 until rows) {
-      for (j <- 0 until cols) {
-        val worker = workersPool.dequeue()
-        log.debug(s"starting actor ${i}_$j at ${worker.host.get}:${worker.port.get}")
-        actors(i)(j) = context.actorOf(AreaActor.props(config)
-          .withDeploy(Deploy(scope = RemoteScope(worker))),
-          s"AreaActor_${i}_$j")
-      }
+    log.info("Deploying actors...")
+    nodeDimensions match {
+      case None =>
+        log.info("Assigning actors to nodes line by line")
+        val workersPool = buildWorkersPool(workers)
+        // Create area actors
+        for (i <- 0 until rows) {
+          for (j <- 0 until cols) {
+            val worker = workersPool.dequeue()
+            log.debug(s"starting actor ${i}_$j at ${worker.host.get}:${worker.port.get}")
+            actors(i)(j) = context.actorOf(AreaActor.props(config)
+              .withDeploy(Deploy(scope = RemoteScope(worker))),
+              s"AreaActor_${i}_$j")
+          }
+        }
+      case Some((nodeRows, nodeCols)) =>
+        log.info(s"Node dimensions: ($nodeRows, $nodeCols)")
+        val nodesInCol = cols / nodeCols
+        // Create area actors
+        for (i <- 0 until rows) {
+          for (j <- 0 until cols) {
+            val workerNo = nodesInCol * (i / nodeRows) + (j / nodeCols)
+            val workerAddress = workers(workerNo).path.address
+            log.debug(s"starting actor ${i}_$j at ${workerAddress.host.get}:${workerAddress.port.get}")
+            actors(i)(j) = context.actorOf(AreaActor.props(config)
+              .withDeploy(Deploy(scope = RemoteScope(workerAddress))),
+              s"AreaActor_${i}_$j")
+          }
+        }
     }
+    log.info("Done deploying actors")
+
     // Generate area roads definitions
     for (i <- 0 until verticalRoadsNum) {
       val direction = if (i % 2 == 0) RoadDirection.NS else RoadDirection.SN
@@ -229,6 +249,25 @@ class Supervisor(config: Config) extends FSM[State, Data] {
     actors
   }
 
+  private def nodeDimensions: Option[(Int, Int)] = {
+    val rowsFactors = factors(rows)
+
+    val possibleRowSizes = rowsFactors.filter(factor => workerCores % factor == 0)
+      .map(f => (f, workerCores / f))
+      .seq
+      .filter(nodeDims => cols % nodeDims._2 == 0 && nodeDims._2 / nodeDims._1 <= cols)
+    if (possibleRowSizes.isEmpty) {
+      return None
+    }
+
+    Some(possibleRowSizes.min(Ordering.by((dims: (Int, Int)) => dims._1 + dims._2)))
+  }
+
+  private def factors(num: Int) = {
+    (2 to num).filter(divisor =>
+      num % divisor == 0
+    )
+  }
 }
 
 object Supervisor {
