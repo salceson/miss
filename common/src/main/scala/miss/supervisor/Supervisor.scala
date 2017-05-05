@@ -256,17 +256,14 @@ class Supervisor(config: Config) extends FSM[State, Data] {
       .map(f => (f, workerCores / f))
       .seq
       .filter(nodeDims => cols % nodeDims._2 == 0 && nodeDims._2 / nodeDims._1 <= cols)
-    if (possibleRowSizes.isEmpty) {
-      return None
-    }
 
-    Some(possibleRowSizes.min(Ordering.by((dims: (Int, Int)) => dims._1 + dims._2)))
+    possibleRowSizes.sortBy(nodeDims => nodeDims._1 + nodeDims._2).headOption
   }
 
   private def factors(num: Int) = {
-    (2 to num).filter(divisor =>
-      num % divisor == 0
-    )
+    Seq(1, num) ++ (2 to math.sqrt(num).toInt)
+      .filter(divisor => num % divisor == 0)
+      .flatMap(divisor => Seq(divisor, num / divisor))
   }
 }
 
