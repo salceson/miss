@@ -228,7 +228,7 @@ class Supervisor(config: Config) extends FSM[State, Data] {
   }
 
   private def handleRemotingEvents: StateFunction = {
-    case Event(ev@DisassociatedEvent(_, _, _), SupervisorData(workers, actors, _)) =>
+    case Event(ev: DisassociatedEvent, SupervisorData(workers, actors, _)) =>
       log.error(s"Got DisassociatedEvent: ${ev.toString}. Shutting down.")
       for (i <- 0 until rows) {
         for (j <- 0 until cols) {

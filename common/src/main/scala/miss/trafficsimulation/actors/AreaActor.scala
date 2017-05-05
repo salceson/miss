@@ -29,18 +29,14 @@ class AreaActor(config: Config) extends FSM[State, Data] with Stash {
 
   startWith(Initialized, EmptyData)
 
-  private def retry[T](f: => Future[T], delay: FiniteDuration, retries: Int)(implicit ec: ExecutionContext): Future[T] = {
-    f recoverWith { case _ if retries > 0 => after(delay, context.system.scheduler)(retry(f, delay, retries - 1)) }
-  }
-
   private def resolveActor(actorPath: ActorPath): Unit = {
     log.debug(s"Resolving $actorPath")
 
-    def resolveActorWithRetries(actorPath: ActorPath, retries: Int)(implicit ec: ExecutionContext): Future[ActorRef] = {
+    def resolveActorWithRetries(retries: Int)(implicit ec: ExecutionContext): Future[ActorRef] = {
       val future = this.context.actorSelection(actorPath).resolveOne(resolveActorTimeoutSeconds seconds)
       future onComplete {
         case Failure(e) if retries > 0 =>
-          log.info(s"Cannot resolve actor: $actorPath due to: ${e.getMessage}. Retrying.")
+          log.info(s"Cannot resolve actor: $actorPath due to: ${e.getMessage}. Retrying (#${resolveActorRetries - retries})")
         case Failure(e) =>
           log.error(s"Cannot resolve actor: $actorPath due to: ${e.getMessage}. Shutting down.")
           context.system.terminate()
@@ -49,17 +45,16 @@ class AreaActor(config: Config) extends FSM[State, Data] with Stash {
           self ! ResolvedActor(actorPath, actorRef)
       }
       future recoverWith {
-        case _ if retries > 0 => after(resolveActorDelaySeconds seconds, context.system.scheduler)(resolveActorWithRetries(actorPath, retries - 1))
+        case _ if retries > 0 => after(resolveActorDelaySeconds seconds, context.system.scheduler)(resolveActorWithRetries(retries - 1))
       }
     }
 
-    resolveActorWithRetries(actorPath, resolveActorRetries)
+    resolveActorWithRetries(resolveActorRetries)
   }
 
   when(Initialized) {
     case Event(msg@StartSimulation(verticalRoadsDefs, horizontalRoadsDefs, x, y), EmptyData) =>
       val actorsToResolve = verticalRoadsDefs.flatMap(vrd => Set(vrd.prevAreaActorPath, vrd.outgoingActorPath)).toSet ++ horizontalRoadsDefs.flatMap(hrd => Set(hrd.prevAreaActorPath, hrd.outgoingActorPath)).toSet
-      //      actorsToResolve.foreach(actorPath => resolveActor(actorPath))
       resolveActor(actorsToResolve.head)
       val supervisor = sender()
       goto(ResolvingActors) using AreaActor.ResolvingActorsData(msg, Map(), actorsToResolve, supervisor)
