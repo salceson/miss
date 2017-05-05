@@ -1,6 +1,7 @@
 package miss.supervisor
 
 import akka.actor.ActorSystem
+import akka.remote.DisassociatedEvent
 import com.typesafe.config.{Config, ConfigFactory}
 
 object SupervisorApp extends App {
@@ -11,6 +12,7 @@ object SupervisorApp extends App {
   checkEnoughCores(config)
   val actorSystem = ActorSystem("TrafficSimulation", config)
   val supervisor = actorSystem.actorOf(Supervisor.props(config), "Supervisor")
+  actorSystem.eventStream.subscribe(supervisor, classOf[DisassociatedEvent])
   supervisor ! Start
 
   private def checkEnoughCores(config: Config) = {
