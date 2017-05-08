@@ -3,7 +3,7 @@ package miss.worker
 import akka.actor.{FSM, Props}
 import akka.remote.{AssociationErrorEvent, DisassociatedEvent}
 import miss.common.SerializableMessage
-import miss.supervisor.Supervisor.{RegisterWorker, UnregisterWorker}
+import miss.supervisor.Supervisor.RegisterWorker
 import miss.worker.WorkerActor.{Data, State}
 
 import scala.concurrent.duration._
@@ -36,8 +36,7 @@ class WorkerActor(supervisorPath: String, retryIntervalSeconds: Long) extends FS
 
   when(Working) {
     case Event(Terminate, _) =>
-      log.info("Sending UnregisterWorker to supervisor")
-      supervisor ! UnregisterWorker
+      log.info("Got Terminate.")
       context.system.scheduler.scheduleOnce(5 seconds, self, TerminateSystem)
       context.system.eventStream.unsubscribe(self, classOf[DisassociatedEvent])
       goto(Terminating)

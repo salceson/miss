@@ -23,6 +23,7 @@ class Supervisor(config: Config) extends FSM[State, Data] {
   import AreaActor.{EndSimulation, StartSimulation, VisualizationStartRequest, VisualizationStopRequest}
   import CityVisualizerActor._
   import Supervisor._
+  import context.dispatcher
 
   private val cols = config.getInt("trafficsimulation.city.cols")
   private val rows = config.getInt("trafficsimulation.city.rows")
@@ -127,21 +128,14 @@ class Supervisor(config: Config) extends FSM[State, Data] {
 
       log.info(s"Simulation done. Computed frames: ${minEntry._2}, min FPS: $minFps, max FPS: $maxFps, avg FPS: $avgFps")
       workers.foreach(worker => worker ! Terminate)
-      goto(TerminatingWorkers) using data.copy(actorsToTerminate = Set())
+      context.system.scheduler.scheduleOnce(2 seconds, self, TerminateSupervisor)
+      goto(Terminating)
   }
 
-  when(TerminatingWorkers) {
-    case Event(UnregisterWorker, data@TearDownData(workers, _, _)) =>
-      val senderActor = sender()
-      log.debug("Removing " + senderActor.toString())
-      if (workers.size > 1) {
-        stay using data.copy(workers = workers.filter(_ != senderActor))
-      }
-      else {
-        context.system.terminate
-        stop
-      }
-    case Event(_, _) => stay
+  when(Terminating) {
+    case Event(TerminateSupervisor, _) =>
+      context.system.terminate()
+      stop
   }
 
   private def allWorkersRegistered(workers: List[ActorRef]): Boolean = {
@@ -275,7 +269,7 @@ object Supervisor {
 
   case object RegisterWorker extends SerializableMessage
 
-  case object UnregisterWorker extends SerializableMessage
+  case object TerminateSupervisor
 
   case class StartVisualization(x: Int, y: Int)
 
@@ -310,8 +304,7 @@ object Supervisor {
 
   case object EndingSimulation extends State
 
-  case object TerminatingWorkers extends State
-
+  case object Terminating extends State
 
   // Data
   sealed trait Data
