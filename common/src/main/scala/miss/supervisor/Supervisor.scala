@@ -243,6 +243,20 @@ class Supervisor(config: Config) extends FSM[State, Data] {
     actors
   }
 
+  private def handleRemotingEvents: StateFunction = {
+    case Event(ev@DisassociatedEvent(_, _, _), SupervisorData(workers, actors, _)) =>
+      log.error(s"Got DisassociatedEvent: ${ev.toString}. Shutting down.")
+      for (i <- 0 until rows) {
+        for (j <- 0 until cols) {
+          val actor = actors(i)(j)
+          actor ! PoisonPill
+        }
+      }
+      workers.foreach(worker => worker ! PoisonPill)
+      context.system.terminate()
+      stop
+  }
+
   private def nodeDimensions: Option[(Int, Int)] = {
     val rowsFactors = factors(rows)
 
@@ -322,20 +336,6 @@ object Supervisor {
                           actorsToTerminate: Set[ActorRef],
                           computedFramesByArea: Map[(Int, Int), Long]
                          ) extends Data
-
-  private def handleRemotingEvents: StateFunction = {
-    case Event(ev@DisassociatedEvent(_, _, _), SupervisorData(workers, actors, _)) =>
-      log.error(s"Got DisassociatedEvent: ${ev.toString}. Shutting down.")
-      for (i <- 0 until rows) {
-        for (j <- 0 until cols) {
-          val actor = actors(i)(j)
-          actor ! PoisonPill
-        }
-      }
-      workers.foreach(worker => worker ! PoisonPill)
-      context.system.terminate()
-      stop
-  }
 
 }
 
