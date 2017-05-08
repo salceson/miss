@@ -1,7 +1,7 @@
 package miss.supervisor
 
 import akka.actor._
-import akka.remote.RemoteScope
+import akka.remote._
 import com.typesafe.config.Config
 import miss.cityvisualization.CityVisualizerActor
 import miss.common.SerializableMessage
@@ -23,6 +23,7 @@ class Supervisor(config: Config) extends FSM[State, Data] {
   import AreaActor.{EndSimulation, StartSimulation, VisualizationStartRequest, VisualizationStopRequest}
   import CityVisualizerActor._
   import Supervisor._
+  import context.dispatcher
 
   private val cols = config.getInt("trafficsimulation.city.cols")
   private val rows = config.getInt("trafficsimulation.city.rows")
@@ -63,7 +64,7 @@ class Supervisor(config: Config) extends FSM[State, Data] {
       }
   }
 
-  when(WarmUp) {
+  when(WarmUp)(handleRemotingEvents orElse {
     case Event(TimeFrameUpdate(x, y, newTimeFrame), SupervisorData(_, _, cityVisualizer)) =>
       log.debug(s"Got TimeFrameUpdate from actor $x, $y: frame $newTimeFrame")
       cityVisualizer.foreach(ar => ar ! CityVisualizationUpdate(x, y, newTimeFrame))
@@ -78,9 +79,9 @@ class Supervisor(config: Config) extends FSM[State, Data] {
       }
       setTimer("simulation-done-timer", SimulationDone, simulationTimeSeconds seconds)
       goto(Working)
-  }
+  })
 
-  when(Working) {
+  when(Working)(handleRemotingEvents orElse {
     case Event(StartVisualization(x, y), SupervisorData(_, actors, _)) =>
       val visualizer = sender()
       actors(x)(y) ! VisualizationStartRequest(visualizer)
@@ -107,7 +108,7 @@ class Supervisor(config: Config) extends FSM[State, Data] {
         }
       }
       goto(EndingSimulation) using TearDownData(workers, actorsToTerminate.toSet, Map[(Int, Int), Long]())
-  }
+  })
 
   when(EndingSimulation) {
     case Event(SimulationResult(x, y, computedFrames), data@TearDownData(workers, actorsToTerminate, computedFramesByArea)) if actorsToTerminate.size > 1 =>
@@ -127,21 +128,14 @@ class Supervisor(config: Config) extends FSM[State, Data] {
 
       log.info(s"Simulation done. Computed frames: ${minEntry._2}, min FPS: $minFps, max FPS: $maxFps, avg FPS: $avgFps")
       workers.foreach(worker => worker ! Terminate)
-      goto(TerminatingWorkers) using data.copy(actorsToTerminate = Set())
+      context.system.scheduler.scheduleOnce(2 seconds, self, TerminateSupervisor)
+      goto(Terminating)
   }
 
-  when(TerminatingWorkers) {
-    case Event(UnregisterWorker, data@TearDownData(workers, _, _)) =>
-      val senderActor = sender()
-      log.debug("Removing " + senderActor.toString())
-      if (workers.size > 1) {
-        stay using data.copy(workers = workers.filter(_ != senderActor))
-      }
-      else {
-        context.system.terminate
-        stop
-      }
-    case Event(_, _) => stay
+  when(Terminating) {
+    case Event(TerminateSupervisor, _) =>
+      context.system.terminate()
+      stop
   }
 
   private def allWorkersRegistered(workers: List[ActorRef]): Boolean = {
@@ -233,6 +227,20 @@ class Supervisor(config: Config) extends FSM[State, Data] {
     actors
   }
 
+  private def handleRemotingEvents: StateFunction = {
+    case Event(ev: DisassociatedEvent, SupervisorData(workers, actors, _)) =>
+      log.error(s"Got DisassociatedEvent: ${ev.toString}. Shutting down.")
+      for (i <- 0 until rows) {
+        for (j <- 0 until cols) {
+          val actor = actors(i)(j)
+          actor ! PoisonPill
+        }
+      }
+      workers.foreach(worker => worker ! PoisonPill)
+      context.system.terminate()
+      stop
+  }
+
 }
 
 object Supervisor {
@@ -243,7 +251,7 @@ object Supervisor {
 
   case object RegisterWorker extends SerializableMessage
 
-  case object UnregisterWorker extends SerializableMessage
+  case object TerminateSupervisor
 
   case class StartVisualization(x: Int, y: Int)
 
@@ -278,8 +286,7 @@ object Supervisor {
 
   case object EndingSimulation extends State
 
-  case object TerminatingWorkers extends State
-
+  case object Terminating extends State
 
   // Data
   sealed trait Data
