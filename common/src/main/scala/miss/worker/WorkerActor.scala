@@ -1,9 +1,9 @@
 package miss.worker
 
 import akka.actor.{FSM, Props}
-import akka.remote.AssociationErrorEvent
+import akka.remote.{AssociationErrorEvent, DisassociatedEvent}
 import miss.common.SerializableMessage
-import miss.supervisor.Supervisor.{RegisterWorker, UnregisterWorker}
+import miss.supervisor.Supervisor.RegisterWorker
 import miss.worker.WorkerActor.{Data, State}
 
 import scala.concurrent.duration._
@@ -22,6 +22,7 @@ class WorkerActor(supervisorPath: String, retryIntervalSeconds: Long) extends FS
     case Event(Start, _) =>
       log.info("Sending RegisterWorker to supervisor")
       context.system.eventStream.subscribe(self, classOf[AssociationErrorEvent])
+      context.system.eventStream.subscribe(self, classOf[DisassociatedEvent])
       supervisor ! RegisterWorker
       stay
     case Event(e: AssociationErrorEvent, _) =>
@@ -29,16 +30,23 @@ class WorkerActor(supervisorPath: String, retryIntervalSeconds: Long) extends FS
       stay
     case Event(RegisterWorkerAck, _) =>
       log.info("Connected with Supervisor")
-      context.system.eventStream.unsubscribe(self, classOf[AssociationErrorEvent])
       goto(Working)
   }
 
   when(Working) {
     case Event(Terminate, _) =>
-      log.info("Sending UnregisterWorker to supervisor")
-      supervisor ! UnregisterWorker
+      log.info("Got Terminate.")
       context.system.scheduler.scheduleOnce(5 seconds, self, TerminateSystem)
+      context.system.eventStream.unsubscribe(self, classOf[DisassociatedEvent])
       goto(Terminating)
+    case Event(e: DisassociatedEvent, _) =>
+      log.error(s"Got DisassociatedEvent: ${e.toString}. Shutting down.")
+      context.system.terminate()
+      stop
+    case Event(e: AssociationErrorEvent, _) =>
+      log.error(s"Got AssociationErrorEvent: ${e.toString}. Shutting down.")
+      context.system.terminate()
+      stop
   }
 
   when(Terminating) {
