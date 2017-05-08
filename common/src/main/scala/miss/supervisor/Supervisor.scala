@@ -6,7 +6,7 @@ import com.typesafe.config.Config
 import miss.cityvisualization.CityVisualizerActor
 import miss.common.SerializableMessage
 import miss.supervisor.Supervisor.{Data, State}
-import miss.trafficsimulation.actors.AreaActor.EndWarmUpPhase
+import miss.trafficsimulation.actors.AreaActor.{AreaRoadDefinition, EndWarmUpPhase}
 import miss.trafficsimulation.actors._
 import miss.trafficsimulation.roads.RoadDirection.RoadDirection
 import miss.trafficsimulation.roads._
@@ -202,6 +202,7 @@ class Supervisor(config: Config) extends FSM[State, Data] {
       horizontalRoadDefs(j) = RoadDefinition(RoadId(verticalRoadsNum + j), direction)
     }
     // Start simulation
+    log.info("Sending StartSimulation commands...")
     for (i <- 0 until rows) {
       for (j <- 0 until cols) {
         val areaVerticalRoadDefs = ListBuffer[AreaRoadDefinition]()
@@ -240,6 +241,7 @@ class Supervisor(config: Config) extends FSM[State, Data] {
         actors(i)(j) ! StartSimulation(areaVerticalRoadDefs.toList, areaHorizontalRoadDefs.toList, i, j)
       }
     }
+    log.info("Done sending StartSimulation")
     actors
   }
 
@@ -344,5 +346,5 @@ object Supervisor {
 
 case class RoadDefinition(roadId: RoadId, direction: RoadDirection) {
   def toAreaRoadDefinition(outgoingActorRef: ActorRef, prevAreaActorRef: ActorRef): AreaRoadDefinition =
-    AreaRoadDefinition(roadId, direction, outgoingActorRef, prevAreaActorRef)
+    AreaRoadDefinition(roadId, direction, outgoingActorRef.path, prevAreaActorRef.path)
 }

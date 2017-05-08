@@ -9,7 +9,7 @@ import miss.trafficsimulation.traffic._
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-case class Road(id: RoadId, direction: RoadDirection, elems: List[RoadElem], prevAreaActorRef: ActorRef, nextAreaRoadSegment: NextAreaRoadSegment)
+case class Road(id: RoadId, direction: RoadDirection, elems: List[RoadElem], prevAreaActor: ActorRef, nextAreaRoadSegment: NextAreaRoadSegment)
 
 case class RoadId(id: Int)
 
@@ -179,7 +179,7 @@ class RoadSegment(val roadId: RoadId,
     }
 
     //switch lanes not supported on initial part of firstRoadSegment
-    if(1==1) {
+    if (1 == 1) {
       //Switch lane left
       if (vac.laneIdx > 0) {
         val maxPossibleCellsSwitchLaneLeft = getMaxPossibleCellsInLane(
@@ -211,7 +211,7 @@ class RoadSegment(val roadId: RoadId,
       possibleMoves += Move(GoStraight, vac.laneIdx, possibleStraightInThisSegment)
     } else out match {
       case nextAreaRoadSegment: NextAreaRoadSegment =>
-        if(nextAreaRoadSegment.canSendCar(vac.laneIdx)) {
+        if (nextAreaRoadSegment.canSendCar(vac.laneIdx)) {
           possibleMoves += Move(GoStraight, vac.laneIdx, maxVelocity) //TODO calculate available cells, temporarily using maxVelocity
         }
         else {
