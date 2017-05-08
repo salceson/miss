@@ -27,11 +27,38 @@ class RoadSegmentSpecification extends Specification {
 
       actual mustEqual expected
     }
-    "correctly calculate possible moves (first half of road)" in {
-      val roadSegment = new RoadSegment(RoadId(1), 3, 10, None, null, NS, 5, 1)
-      val car1 = Car(VehicleId(1), 10, 1, Black, 5, 0)
-      val car2 = Car(VehicleId(2), 10, 1, White, 5, 0)
-      val car3 = Car(VehicleId(3), 10, 1, Yellow, 5, 0)
+    "correctly calculate possible moves (initial segment of the road - first segment of road)" in {
+      val roadSegment = new RoadSegment(RoadId(1), 3, 20, None, null, NS, 5, 1)
+      val car1 = Car(VehicleId(1), 5, 1, Black, 5, 0)
+      val car2 = Car(VehicleId(2), 5, 1, White, 5, 0)
+      val car3 = Car(VehicleId(3), 5, 1, Yellow, 5, 0)
+      roadSegment.lanes(0).cells(2).vehicle = Some(car1)
+      roadSegment.lanes(1).cells(2).vehicle = Some(Car(VehicleId(5), 10, 1, Green, 5, 0))
+      roadSegment.lanes(2).cells(2).vehicle = Some(car3)
+      roadSegment.lanes(0).cells(5).vehicle = Some(Car(VehicleId(4), 10, 1, Red, 5, 0))
+      roadSegment.lanes(1).cells(9).vehicle = Some(car2)
+      roadSegment.lanes(2).cells(5).vehicle = Some(Car(VehicleId(6), 10, 1, Blue, 5, 0))
+      val actual1 = roadSegment.calculatePossibleMoves(VehicleAndCoordinates(car1, 0, 2), Horizontal)
+      val actual2 = roadSegment.calculatePossibleMoves(VehicleAndCoordinates(car2, 1, 9), Horizontal)
+      val actual3 = roadSegment.calculatePossibleMoves(VehicleAndCoordinates(car3, 2, 2), Horizontal)
+      actual1 must contain(
+        Move(GoStraight, 0, 2)
+      )
+      actual2 must contain(
+        Move(SwitchLaneLeft, 0, 5),
+        Move(GoStraight, 1, 5),
+        Move(SwitchLaneRight, 2, 5)
+      )
+      actual3 must contain(
+        Move(GoStraight, 2, 2)
+      )
+    }
+    "correctly calculate possible moves (initial segment of the road - second segment of road)" in {
+      val previous = new RoadSegment(RoadId(1), 3, 10, None, null, NS, 5, 1)
+      val roadSegment = new RoadSegment(RoadId(1), 3, 10, Some(previous), null, NS, 5, 1)
+      val car1 = Car(VehicleId(1), 5, 1, Black, 5, 0)
+      val car2 = Car(VehicleId(2), 5, 1, White, 5, 0)
+      val car3 = Car(VehicleId(3), 5, 1, Yellow, 5, 0)
       roadSegment.lanes(0).cells(2).vehicle = Some(car1)
       roadSegment.lanes(1).cells(2).vehicle = Some(car2)
       roadSegment.lanes(2).cells(2).vehicle = Some(car3)
@@ -65,7 +92,7 @@ class RoadSegmentSpecification extends Specification {
       intersection.horizontalRoadOut = horizontalRoadSegmentOut
       intersection.verticalRoadIn = verticalRoadSegmentIn
       intersection.verticalRoadOut = verticalRoadSegmentOut
-      val car = Car(VehicleId(1), 10, 1, Black, 5, 0)
+      val car = Car(VehicleId(1), 5, 1, Black, 5, 0)
       horizontalRoadSegmentIn.lanes(0).cells(7).vehicle = Some(car)
       horizontalRoadSegmentOut.lanes(0).cells(2).vehicle = Some(Car(VehicleId(2), 10, 1, Red, 5, 0))
       verticalRoadSegmentOut.lanes(1).cells(2).vehicle = Some(Car(VehicleId(3), 10, 1, Blue, 5, 0))

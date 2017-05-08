@@ -17,7 +17,7 @@ import scala.swing.{Component, Dimension, Graphics2D, Point}
   * @author Michal Janczykowski
   */
 class Canvas extends Component {
-  val config = ConfigFactory.load()
+  val config = ConfigFactory.load("visualization.conf")
 
   val trafficSimulationConfig = config.getConfig("trafficsimulation")
   val areaConfig = trafficSimulationConfig.getConfig("area")
