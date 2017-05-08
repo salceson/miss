@@ -30,7 +30,6 @@ class WorkerActor(supervisorPath: String, retryIntervalSeconds: Long) extends FS
       stay
     case Event(RegisterWorkerAck, _) =>
       log.info("Connected with Supervisor")
-      context.system.eventStream.unsubscribe(self, classOf[AssociationErrorEvent])
       goto(Working)
   }
 
@@ -40,8 +39,12 @@ class WorkerActor(supervisorPath: String, retryIntervalSeconds: Long) extends FS
       context.system.scheduler.scheduleOnce(5 seconds, self, TerminateSystem)
       context.system.eventStream.unsubscribe(self, classOf[DisassociatedEvent])
       goto(Terminating)
-    case Event(e@DisassociatedEvent(_, _, _), _) =>
+    case Event(e: DisassociatedEvent, _) =>
       log.error(s"Got DisassociatedEvent: ${e.toString}. Shutting down.")
+      context.system.terminate()
+      stop
+    case Event(e: AssociationErrorEvent, _) =>
+      log.error(s"Got AssociationErrorEvent: ${e.toString}. Shutting down.")
       context.system.terminate()
       stop
   }
