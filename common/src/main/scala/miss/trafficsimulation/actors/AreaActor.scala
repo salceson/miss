@@ -54,9 +54,9 @@ class AreaActor(config: Config) extends FSM[State, Data] with Stash {
 
   when(Initialized) {
     case Event(msg@StartSimulation(verticalRoadsDefs, horizontalRoadsDefs, x, y), EmptyData) =>
+      val supervisor = sender()
       val actorsToResolve = verticalRoadsDefs.flatMap(vrd => Set(vrd.prevAreaActorPath, vrd.outgoingActorPath)).toSet ++ horizontalRoadsDefs.flatMap(hrd => Set(hrd.prevAreaActorPath, hrd.outgoingActorPath)).toSet
       resolveActor(actorsToResolve.head)
-      val supervisor = sender()
       goto(ResolvingActors) using AreaActor.ResolvingActorsData(msg, Map(), actorsToResolve, supervisor)
     case Event(_, _) =>
       stash
@@ -91,7 +91,7 @@ class AreaActor(config: Config) extends FSM[State, Data] with Stash {
       self ! ReadyForComputation(0)
       unstashAll
       goto(Simulating) using AreaData(area, None, startSimulationMessage.x, startSimulationMessage.y, supervisor, 0)
-    case Event(msg@ResolvedActor(_, _), data@ResolvingActorsData(_, _, _, _)) =>
+    case Event(msg: ResolvedActor, data: ResolvingActorsData) =>
       log.warning(s"Got unexpected message: $msg in state ResolvingActors with data: $data")
       stay
     case Event(_, _) =>
@@ -213,7 +213,8 @@ object AreaActor {
 
   def props(config: Config): Props = Props(classOf[AreaActor], config)
 
-  case class AreaRoadDefinition(roadId: RoadId, direction: RoadDirection, outgoingActorPath: ActorPath, prevAreaActorPath: ActorPath) extends SerializableMessage
+  case class AreaRoadDefinition(roadId: RoadId, direction: RoadDirection, outgoingActorPath: ActorPath, prevAreaActorPath: ActorPath)
+    extends SerializableMessage
 
   // Messages:
 
