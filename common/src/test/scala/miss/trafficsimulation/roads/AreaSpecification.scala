@@ -160,6 +160,7 @@ class AreaSpecification extends Specification {
           firstRoadSeg.lanes(0).cells(0).vehicle = Some(Car(VehicleId(1), 10, 1, Red, 5, 0))
           firstRoadSeg.lanes(1).cells(1).vehicle = Some(Car(VehicleId(2), 10, 1, Red, 5, 0))
           firstRoadSeg.lanes(2).cells(2).vehicle = Some(Car(VehicleId(3), 10, 1, Red, 5, 0))
+        case _ => throw new IllegalStateException("Expected RoadSegment")
       }
 
       area.horizontalRoads.head.elems.head match {
@@ -170,6 +171,7 @@ class AreaSpecification extends Specification {
           firstRoadSeg.lanes(1).cells(3).vehicle = Some(Car(VehicleId(7), 10, 1, Red, 5, 0))
           firstRoadSeg.lanes(2).cells(0).vehicle = Some(Car(VehicleId(8), 10, 1, Red, 5, 0))
           firstRoadSeg.lanes(2).cells(2).vehicle = Some(Car(VehicleId(9), 10, 1, Red, 5, 0))
+        case _ => throw new IllegalStateException("Expected RoadSegment")
       }
 
       val expectedRoadSpaceInfoList = List(
