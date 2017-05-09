@@ -1,23 +1,24 @@
 package miss.trafficsimulation.actors
 
-import akka.actor.{ActorPath, ActorRef, FSM, Props, Stash}
+import akka.actor.{ ActorPath, ActorRef, FSM, Props, Stash }
 import akka.pattern.after
 import com.typesafe.config.Config
 import miss.common.SerializableMessage
 import miss.supervisor.Supervisor
-import miss.trafficsimulation.actors.AreaActor.{Data, State}
+import miss.trafficsimulation.actors.AreaActor.{ Data, State }
 import miss.trafficsimulation.roads.RoadDirection._
 import miss.trafficsimulation.roads._
 import miss.visualization.VisualizationActor.TrafficState
+import pl.edu.agh.iet.akka_tracing.TracedActor
 
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ ExecutionContext, Future }
 import scala.language.postfixOps
-import scala.util.{Failure, Success}
+import scala.util.{ Failure, Success }
 
-class AreaActor(config: Config) extends FSM[State, Data] with Stash {
+class AreaActor(config: Config) extends FSM[State, Data] with Stash with TracedActor {
 
   import AreaActor._
   import Supervisor.SimulationResult

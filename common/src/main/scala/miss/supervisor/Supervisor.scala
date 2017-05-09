@@ -5,12 +5,13 @@ import akka.remote._
 import com.typesafe.config.Config
 import miss.cityvisualization.CityVisualizerActor
 import miss.common.SerializableMessage
-import miss.supervisor.Supervisor.{Data, State}
-import miss.trafficsimulation.actors.AreaActor.{AreaRoadDefinition, EndWarmUpPhase}
+import miss.supervisor.Supervisor.{ Data, State }
+import miss.trafficsimulation.actors.AreaActor.{ AreaRoadDefinition, EndWarmUpPhase }
 import miss.trafficsimulation.actors._
 import miss.trafficsimulation.roads.RoadDirection.RoadDirection
 import miss.trafficsimulation.roads._
-import miss.worker.WorkerActor.{RegisterWorkerAck, Terminate}
+import miss.worker.WorkerActor.{ RegisterWorkerAck, Terminate }
+import pl.edu.agh.iet.akka_tracing.TracedActor
 
 import scala.Array.ofDim
 import scala.collection.mutable
@@ -18,7 +19,7 @@ import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-class Supervisor(config: Config) extends FSM[State, Data] {
+class Supervisor(config: Config) extends FSM[State, Data] with TracedActor {
 
   import AreaActor.{EndSimulation, StartSimulation, VisualizationStartRequest, VisualizationStopRequest}
   import CityVisualizerActor._

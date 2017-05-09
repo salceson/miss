@@ -1,5 +1,6 @@
 import sbt._
 import Keys._
+import sbtassembly.AssemblyPlugin.autoImport._
 
 object CommonSettings {
   private val AkkaVersion = "2.4.17"
@@ -21,6 +22,10 @@ object CommonSettings {
   val commonSettings: Seq[Def.Setting[_]] = Seq(
     resolvers ++= commonResolvers,
     scalacOptions in Test ++= commonTestScalacSettings,
-    libraryDependencies ++= commonDependencies
+    libraryDependencies ++= commonDependencies,
+    assemblyMergeStrategy in assembly := {
+      case PathList("META-INF", xs @ _*) => MergeStrategy.discard
+      case _ => MergeStrategy.first
+    }
   )
 }

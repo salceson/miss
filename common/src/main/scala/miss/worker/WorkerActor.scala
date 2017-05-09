@@ -1,15 +1,17 @@
 package miss.worker
 
-import akka.actor.{FSM, Props}
-import akka.remote.{AssociationErrorEvent, DisassociatedEvent}
+import akka.actor.{ FSM, Props }
+import akka.remote.{ AssociationErrorEvent, DisassociatedEvent }
 import miss.common.SerializableMessage
 import miss.supervisor.Supervisor.RegisterWorker
-import miss.worker.WorkerActor.{Data, State}
+import miss.worker.WorkerActor.{ Data, State }
+import pl.edu.agh.iet.akka_tracing.TracedActor
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-class WorkerActor(supervisorPath: String, retryIntervalSeconds: Long) extends FSM[State, Data] {
+class WorkerActor(supervisorPath: String, retryIntervalSeconds: Long)
+  extends FSM[State, Data] with TracedActor {
 
   import WorkerActor._
   import context.dispatcher
