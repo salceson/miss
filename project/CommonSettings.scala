@@ -2,7 +2,7 @@ import sbt._
 import Keys._
 
 object CommonSettings {
-  private val AkkaVersion = "2.4.16"
+  private val AkkaVersion = "2.4.17"
 
   val commonDependencies: Seq[ModuleID] = Seq(
     "com.typesafe.akka" %% "akka-actor" % AkkaVersion,
