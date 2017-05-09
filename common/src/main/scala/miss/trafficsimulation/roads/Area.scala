@@ -234,7 +234,7 @@ class Area(verticalRoadsDefs: List[AreaRoadData],
           }
         case _ => throw new ClassCastException
       }
-      if(!desynchronizationEnabled && road.nextAreaRoadSegment.lastUpdateTimeFrame < currentTimeFrame - 1) {
+      if (!desynchronizationEnabled && road.nextAreaRoadSegment.lastUpdateTimeFrame < currentTimeFrame - 1) {
         return false
       }
     }
