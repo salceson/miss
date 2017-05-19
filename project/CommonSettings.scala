@@ -24,7 +24,9 @@ object CommonSettings {
     scalacOptions in Test ++= commonTestScalacSettings,
     libraryDependencies ++= commonDependencies,
     assemblyMergeStrategy in assembly := {
+      case PathList(ps @ _*) if ps.last == "aop.xml" => MergeStrategy.deduplicate
       case PathList("META-INF", xs @ _*) => MergeStrategy.discard
+      case PathList(ps @ _*) if ps.last.endsWith(".conf") => MergeStrategy.concat
       case _ => MergeStrategy.first
     }
   )
