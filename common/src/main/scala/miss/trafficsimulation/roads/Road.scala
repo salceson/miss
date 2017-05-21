@@ -18,7 +18,7 @@ sealed trait RoadElem
 case class NextAreaRoadSegment(roadId: RoadId, actor: ActorRef, lanesCount: Int) extends RoadElem {
   private val carsSentSinceUpdate: ListBuffer[Int] = ListBuffer.fill(lanesCount)(0)
   private var availableSpacePerLane: List[Int] = List.fill(lanesCount)(0)
-  private var lastUpdateTimeFrame: Long = 0
+  private[roads] var lastUpdateTimeFrame: Long = 0
   private var sentCarsQueue = mutable.Queue[SentCarInfo]()
 
   private[roads] def canSendCar(laneIdx: Int): Boolean = {

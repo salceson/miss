@@ -30,7 +30,8 @@ class Area(verticalRoadsDefs: List[AreaRoadData],
   private val maxVelocity = vehicleConfig.getInt("max_velocity")
   private val maxAcceleration = vehicleConfig.getInt("max_acceleration")
 
-  private val maxTimeFrameDelay = (roadSegmentsLength * 0.5).toInt / maxVelocity
+  private val desynchronizationEnabled = config.getBoolean("trafficsimulation.desynchronization.enabled")
+  private val maxTimeFrameDelay = if (desynchronizationEnabled) (roadSegmentsLength * 0.5).toInt / maxVelocity else 1
 
   private val intersections = ofDim[Intersection](verticalRoadsDefs.size, horizontalRoadsDefs.size)
 
@@ -227,10 +228,14 @@ class Area(verticalRoadsDefs: List[AreaRoadData],
   def isReadyForComputation(): Boolean = {
     for (road <- horizontalRoads ++ verticalRoads) {
       road.elems.head match {
-        case firstRoadSeg: RoadSegment => if ((currentTimeFrame + 1) - firstRoadSeg.lastIncomingTrafficTimeFrame > maxTimeFrameDelay) {
-          return false
-        }
+        case firstRoadSeg: RoadSegment =>
+          if ((currentTimeFrame + 1) - firstRoadSeg.lastIncomingTrafficTimeFrame > maxTimeFrameDelay) {
+            return false
+          }
         case _ => throw new ClassCastException
+      }
+      if (!desynchronizationEnabled && road.nextAreaRoadSegment.lastUpdateTimeFrame < currentTimeFrame - 1) {
+        return false
       }
     }
 
