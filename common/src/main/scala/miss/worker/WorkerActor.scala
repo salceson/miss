@@ -42,10 +42,12 @@ class WorkerActor(supervisorPath: String, retryIntervalSeconds: Long) extends FS
     case Event(e: DisassociatedEvent, _) =>
       log.error(s"Got DisassociatedEvent: ${e.toString}. Shutting down.")
       context.system.terminate()
+      System.exit(0)
       stop
     case Event(e: AssociationErrorEvent, _) =>
       log.error(s"Got AssociationErrorEvent: ${e.toString}. Shutting down.")
       context.system.terminate()
+      System.exit(0)
       stop
   }
 
@@ -53,6 +55,7 @@ class WorkerActor(supervisorPath: String, retryIntervalSeconds: Long) extends FS
     case Event(TerminateSystem, _) =>
       log.info("Terminating system")
       context.system.terminate()
+      System.exit(0)
       stop
   }
 }
