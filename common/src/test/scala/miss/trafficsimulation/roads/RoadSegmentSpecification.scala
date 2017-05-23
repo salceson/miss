@@ -45,9 +45,7 @@ class RoadSegmentSpecification extends Specification {
         Move(GoStraight, 0, 2)
       )
       actual2 must contain(
-        Move(SwitchLaneLeft, 0, 5),
-        Move(GoStraight, 1, 5),
-        Move(SwitchLaneRight, 2, 5)
+        Move(GoStraight, 1, 5)
       )
       actual3 must contain(
         Move(GoStraight, 2, 2)

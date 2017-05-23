@@ -178,8 +178,8 @@ class RoadSegment(val roadId: RoadId,
       possibleMoves += Move(GoStraight, vac.laneIdx, maxPossibleCellsStraight)
     }
 
-    //switch lanes not supported on initial part of firstRoadSegment
-    if (in.isDefined || vac.cellIdx > maxVelocity) {
+    //switching lanes not supported on firstRoadSegment
+    if (in.isDefined) {
       //Switch lane left
       if (vac.laneIdx > 0) {
         val maxPossibleCellsSwitchLaneLeft = getMaxPossibleCellsInLane(
@@ -382,16 +382,13 @@ class RoadSegment(val roadId: RoadId,
       }
 
       if (laneToPutIdx < 0) {
-        //FIXME some incoming cars are ignored if no space to put them
         throw new IllegalStateException(s"Cannot put car. No available space on any lane on road $roadId")
       }
 
       val vehicleToPut = Car(VehicleIdGenerator.nextId, vehicle.maxVelocity, vehicle.maxAcceleration, vehicle.color, incomingTrafficTimeFrame, vehicle.currentVelocity, vehicle.currentAcceleration)
       val cellToPutId = availableCells(laneToPutIdx, maxVelocity + 1) - 1
-      //FIXME sometimes cellToPutId is negative
 
       if (cellToPutId < 0) {
-        //TODO remove after fixing above
         throw new IllegalStateException("CellToPutID is negative")
       }
 
