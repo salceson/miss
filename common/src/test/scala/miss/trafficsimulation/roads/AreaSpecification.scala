@@ -1,7 +1,7 @@
 package miss.trafficsimulation.roads
 
 import com.typesafe.config.ConfigFactory
-import miss.trafficsimulation.actors.AreaActor.OutgoingTrafficInfo
+import miss.trafficsimulation.actors.AreaActor.{AvailableRoadspaceInfo, OutgoingTrafficInfo}
 import miss.trafficsimulation.roads.RoadDirection._
 import miss.trafficsimulation.traffic.{Car, VehicleId}
 import miss.trafficsimulation.util.CommonColors._
@@ -69,6 +69,11 @@ class AreaSpecification extends Specification {
       area.simulate() // tf 2
       area.isReadyForComputation() must beFalse
 
+      area.updateNeighboursAvailableRoadspace(AvailableRoadspaceInfo(RoadId(1), 1, List()))
+      area.updateNeighboursAvailableRoadspace(AvailableRoadspaceInfo(RoadId(3), 1, List()))
+      area.updateNeighboursAvailableRoadspace(AvailableRoadspaceInfo(RoadId(2), 1, List()))
+      area.updateNeighboursAvailableRoadspace(AvailableRoadspaceInfo(RoadId(4), 1, List()))
+
       area.putIncomingTraffic(OutgoingTrafficInfo(RoadId(1), 2, List()))
       area.isReadyForComputation() must beFalse
 
@@ -104,8 +109,20 @@ class AreaSpecification extends Specification {
       val area = createAnotherTestArea
       area.simulate() // tf 1
       area.isReadyForComputation() must beTrue
+
+      area.updateNeighboursAvailableRoadspace(AvailableRoadspaceInfo(RoadId(1), 1, List(10, 8, 8)))
+      area.updateNeighboursAvailableRoadspace(AvailableRoadspaceInfo(RoadId(3), 1, List(7, 6, 5)))
+      area.updateNeighboursAvailableRoadspace(AvailableRoadspaceInfo(RoadId(2), 1, List(5, 10, 5)))
+      area.updateNeighboursAvailableRoadspace(AvailableRoadspaceInfo(RoadId(4), 1, List(6, 7, 5)))
+
       area.simulate() // tf 2
       area.isReadyForComputation() must beTrue
+
+      area.updateNeighboursAvailableRoadspace(AvailableRoadspaceInfo(RoadId(1), 2, List(10, 8, 8)))
+      area.updateNeighboursAvailableRoadspace(AvailableRoadspaceInfo(RoadId(3), 2, List(7, 6, 5)))
+      area.updateNeighboursAvailableRoadspace(AvailableRoadspaceInfo(RoadId(2), 2, List(5, 10, 5)))
+      area.updateNeighboursAvailableRoadspace(AvailableRoadspaceInfo(RoadId(4), 2, List(6, 7, 5)))
+
       area.simulate() // tf 3
       area.isReadyForComputation() must beFalse
 
