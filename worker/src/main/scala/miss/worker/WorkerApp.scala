@@ -11,9 +11,10 @@ object WorkerApp extends App {
     val supervisorPath = s"akka.tcp://TrafficSimulation@$supervisorHostname:6666/user/Supervisor"
 
     val retryIntervalSeconds = config.getLong("supervisor.association.retry.interval.seconds")
+    val supervisorAssociationTimeoutSeconds = config.getLong("supervisor.association.timeout.seconds")
 
     val system = ActorSystem("RemoteWorker", ConfigFactory.load("worker"))
-    val worker = system.actorOf(WorkerActor.props(supervisorPath, retryIntervalSeconds), "worker")
+    val worker = system.actorOf(WorkerActor.props(supervisorPath, retryIntervalSeconds, supervisorAssociationTimeoutSeconds), "worker")
     worker ! WorkerActor.Start
   }
 

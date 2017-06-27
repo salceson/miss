@@ -9,14 +9,17 @@ import miss.worker.WorkerActor.{Data, State}
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-class WorkerActor(supervisorPath: String, retryIntervalSeconds: Long) extends FSM[State, Data] {
+class WorkerActor(supervisorPath: String, retryIntervalSeconds: Long, supervisorAssociationTimeoutSeconds: Long) extends FSM[State, Data] {
 
   import WorkerActor._
   import context.dispatcher
 
   val supervisor = context.actorSelection(supervisorPath)
 
+  private val ASSOCIATION_TIMER = "association-timer"
+
   startWith(Initial, EmptyData)
+  setTimer(ASSOCIATION_TIMER, AssociationTimedOut, supervisorAssociationTimeoutSeconds seconds)
 
   when(Initial) {
     case Event(Start, _) =>
@@ -28,8 +31,14 @@ class WorkerActor(supervisorPath: String, retryIntervalSeconds: Long) extends FS
     case Event(e: AssociationErrorEvent, _) =>
       context.system.scheduler.scheduleOnce(retryIntervalSeconds seconds, self, Start)
       stay
+    case Event(AssociationTimedOut, _) =>
+      log.error("Association timed out. Shutting down.")
+      context.system.terminate()
+      System.exit(1)
+      stop
     case Event(RegisterWorkerAck, _) =>
       log.info("Connected with Supervisor")
+      cancelTimer(ASSOCIATION_TIMER)
       goto(Working)
   }
 
@@ -69,9 +78,11 @@ object WorkerActor {
 
   case object Terminate extends SerializableMessage
 
+  case object AssociationTimedOut
+
   case object TerminateSystem
 
-  def props(supervisorPath: String, retryIntervalSeconds: Long): Props = Props(classOf[WorkerActor], supervisorPath, retryIntervalSeconds)
+  def props(supervisorPath: String, retryIntervalSeconds: Long,supervisorAssociationTimeoutSeconds: Long): Props = Props(classOf[WorkerActor], supervisorPath, retryIntervalSeconds, supervisorAssociationTimeoutSeconds)
 
   // State:
   sealed trait State
