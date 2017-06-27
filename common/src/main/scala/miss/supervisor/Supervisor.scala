@@ -33,14 +33,19 @@ class Supervisor(config: Config) extends FSM[State, Data] {
 
   private val workerNodesCount = config.getInt("worker.nodes")
   private val workerCores = config.getInt("worker.areas_per_node")
+  private val waitingForWorkersTimeOutSeconds = config.getInt("supervisor.waiting-for-workers-timeout-seconds")
   private val warmUpTimeSeconds = config.getInt("trafficsimulation.warmup.seconds")
   private val simulationTimeSeconds = config.getInt("trafficsimulation.time.seconds")
 
   startWith(Initial, EmptyData)
 
+  private val WORKERS_TIMER = "waiting-for-workers-timer"
+  private val WARM_UP_TIMER = "warm-up-timer"
+
   when(Initial) {
     case Event(Start, EmptyData) =>
       log.info("Waiting for workers")
+      setTimer(WORKERS_TIMER, WaitingForWorkersTimedOut, waitingForWorkersTimeOutSeconds seconds)
       goto(WaitingForWorkers) using WorkersData(List[ActorRef]())
   }
 
@@ -56,12 +61,18 @@ class Supervisor(config: Config) extends FSM[State, Data] {
       if (allWorkersRegistered(newWorkers)) {
         val areaActors = startSimulation(newWorkers)
         log.info("Starting warm up phase")
-        setTimer("warm-up-timer", WarmUpDone, warmUpTimeSeconds seconds)
+        cancelTimer(WORKERS_TIMER)
+        setTimer(WARM_UP_TIMER, WarmUpDone, warmUpTimeSeconds seconds)
         goto(WarmUp) using SupervisorData(newWorkers, areaActors, None)
       }
       else {
         stay using WorkersData(newWorkers)
       }
+    case Event(WaitingForWorkersTimedOut, WorkersData(workers)) =>
+      log.error("Timed out while waiting for workers")
+      workers.foreach(worker => worker ! Terminate)
+      context.system.scheduler.scheduleOnce(2 seconds, self, TerminateSupervisor)
+      goto(Terminating)
   }
 
   when(WarmUp)(handleRemotingEvents orElse {
@@ -305,6 +316,8 @@ object Supervisor {
   case object WarmUpDone
 
   case object SimulationDone
+
+  case object WaitingForWorkersTimedOut
 
   def props(config: Config): Props = Props(classOf[Supervisor], config)
 
