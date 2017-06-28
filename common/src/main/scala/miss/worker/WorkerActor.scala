@@ -16,10 +16,10 @@ class WorkerActor(supervisorPath: String, retryIntervalSeconds: Long, supervisor
 
   val supervisor = context.actorSelection(supervisorPath)
 
-  private val ASSOCIATION_TIMER = "association-timer"
+  private val AssociationTimer = "association-timer"
 
   startWith(Initial, EmptyData)
-  setTimer(ASSOCIATION_TIMER, AssociationTimedOut, supervisorAssociationTimeoutSeconds seconds)
+  setTimer(AssociationTimer, AssociationTimedOut, supervisorAssociationTimeoutSeconds seconds)
 
   when(Initial) {
     case Event(Start, _) =>
@@ -38,7 +38,7 @@ class WorkerActor(supervisorPath: String, retryIntervalSeconds: Long, supervisor
       stop
     case Event(RegisterWorkerAck, _) =>
       log.info("Connected with Supervisor")
-      cancelTimer(ASSOCIATION_TIMER)
+      cancelTimer(AssociationTimer)
       goto(Working)
   }
 
@@ -82,7 +82,8 @@ object WorkerActor {
 
   case object TerminateSystem
 
-  def props(supervisorPath: String, retryIntervalSeconds: Long,supervisorAssociationTimeoutSeconds: Long): Props = Props(classOf[WorkerActor], supervisorPath, retryIntervalSeconds, supervisorAssociationTimeoutSeconds)
+  def props(supervisorPath: String, retryIntervalSeconds: Long, supervisorAssociationTimeoutSeconds: Long): Props =
+    Props(classOf[WorkerActor], supervisorPath, retryIntervalSeconds, supervisorAssociationTimeoutSeconds)
 
   // State:
   sealed trait State
